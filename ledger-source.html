@@ -21,6 +21,7 @@
   --accent:#4fbfa8; --accent-fg:#06221c; --accent-soft:#18332d;
   --good:#5fcf86; --warn:#f0b35a; --warn-soft:#3a2b14; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);padding-bottom:84px}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--accent)}
@@ -94,10 +95,47 @@ textarea{width:100%;height:120px;font:12px ui-monospace,monospace;background:var
 <script>
 // ---------- data ----------
 const KEY='ledger.v2';
-const EMPTY=()=>({parties:[],customers:[],lots:[],tx:[],seq:1});
+const EMPTY=()=>({parties:[],customers:[],lots:[],tx:[]});
 function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return null}
-let db=load()||EMPTY();
-function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('Could not save: browser storage is blocked')}}
+// CLOUD = shared database (Firebase) when firebase-config.js has the project settings; otherwise this phone only.
+const CLOUD=!!(window.FIREBASE_CONFIG&&window.firebase);
+const COLS=['parties','customers','lots','tx'];
+let db=CLOUD?EMPTY():(load()||EMPTY());
+let fbAuth=null,fbStore=null,user=null,ready=0,synced={parties:{},customers:{},lots:{},tx:{}},unsubs=[],migChecked=false;
+let _s=0;const nextSeq=()=>Date.now()*1000+(_s++%1000);
+// same object, same text, whatever the key order
+const sig=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,k)=>(a[k]=v[k],a),{}):v);
+function save(){
+  if(!CLOUD){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('Could not save: browser storage is blocked')}return}
+  pushDiff();
+}
+// send only what changed to the shared database. A stock quantity change is sent as +/- so two phones selling at once add up.
+function pushDiff(){
+  const ops=[];
+  COLS.forEach(c=>{
+    const cur={};db[c].forEach(x=>cur[x.id]=x);
+    for(const id in cur){
+      const j=sig(cur[id]),old=synced[c][id];
+      if(old===j)continue;
+      if(old!==undefined&&c==='lots'){
+        const o=JSON.parse(old),a={...o},b={...cur[id]};delete a.qty;delete b.qty;
+        if(sig(a)===sig(b)){ops.push({c,id,inc:cur[id].qty-o.qty});synced[c][id]=j;continue}
+      }
+      ops.push({c,id,set:JSON.parse(JSON.stringify(cur[id]))});synced[c][id]=j;
+    }
+    for(const id in synced[c])if(!(id in cur)){ops.push({c,id,del:true});delete synced[c][id]}
+  });
+  for(let i=0;i<ops.length;i+=400){
+    const batch=fbStore.batch();
+    ops.slice(i,i+400).forEach(o=>{
+      const ref=fbStore.collection(o.c).doc(o.id);
+      if(o.del)batch.delete(ref);
+      else if(o.inc!==undefined)batch.set(ref,{qty:firebase.firestore.FieldValue.increment(o.inc)},{merge:true});
+      else batch.set(ref,o.set);
+    });
+    batch.commit().catch(e=>toast('Could not save to the shared database: '+(e.code||e.message)));
+  }
+}
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-3);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -150,11 +188,16 @@ function go(n,id,extra){view={n,id,...extra};try{window.scrollTo(0,0)}catch(e){}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.v)});
 $('#back').addEventListener('click',()=>go(view.back||'accts'));
 function chrome(title,sub,back,tab){
-  $('#title').innerHTML=esc(title)+(sub?`<small>${sub}</small>`:'');
+  $('#title').innerHTML=esc(title)+((sub||(CLOUD&&!navigator.onLine))?`<small>${sub||''}${CLOUD&&!navigator.onLine?(sub?' · ':'')+'offline, will sync when online':''}</small>`:'');
   $('#back').style.display=back?'block':'none';
   document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===tab));
 }
-function render(){({home:rHome,invoice:rInvoice,crdr:rCrDr,stock:rStock,accts:rAccts,acct:rAcct}[view.n]||rHome)()}
+function render(){
+  if(CLOUD&&!user)return showLogin();
+  if(CLOUD&&ready<COLS.length){chrome('Sajad Pharmacy','Loading…',false,'');$('#app').innerHTML='<div class="empty">Loading the shared data…</div>';return}
+  $('#tabs').hidden=false;
+  ({home:rHome,invoice:rInvoice,crdr:rCrDr,stock:rStock,accts:rAccts,acct:rAcct}[view.n]||rHome)()
+}
 function openDlg(html){const d=$('#dlg');d.innerHTML=html;if(!d.open)d.showModal();return d}
 function closeDlg(){$('#dlg').close()}
 
@@ -180,12 +223,15 @@ function rHome(){
     <p class="muted" style="margin:0 0 8px;font-size:13px">Your data is only on this phone. Copy a backup now and then and keep it safe (WhatsApp it to yourself).</p>
     <div class="btns two" style="margin:0"><button class="btn o" id="bCopy">Copy backup</button><button class="btn o" id="bRest">Restore backup</button></div>
     <div id="bBox" hidden><textarea id="bTxt" style="margin-top:10px"></textarea><div class="btns"><button class="btn" id="bGo" hidden>Replace all data with this backup</button></div></div>
-    <div class="btns" style="margin-bottom:0"><button class="btn danger" id="wipe">Delete all data</button></div></div>`;
+    ${CLOUD?`<div class="btns" style="margin-bottom:0"><div class="muted" style="font-size:13px">Logged in as ${esc(user&&user.email)}. Data is shared with everyone who has a login.</div><button class="btn o" id="logout">Log out</button></div>`:'<div class="btns" style="margin-bottom:0"><button class="btn danger" id="wipe">Delete all data</button></div>'}</div>`;
   $('#bCopy').onclick=()=>{const s=JSON.stringify(db);$('#bBox').hidden=false;$('#bGo').hidden=true;$('#bTxt').value=s;
     navigator.clipboard?.writeText(s).then(()=>toast('Backup copied')).catch(()=>{$('#bTxt').select();toast('Select all and copy the text')})};
   $('#bRest').onclick=()=>{$('#bBox').hidden=false;$('#bGo').hidden=false;$('#bTxt').value='';$('#bTxt').placeholder='Paste backup text here';$('#bTxt').focus()};
-  $('#bGo').onclick=()=>{try{const d=JSON.parse($('#bTxt').value);if(!d.parties||!d.tx||!d.lots)throw 0;db=d;save();render();toast('Backup restored')}catch(e){toast('That text is not a valid backup')}};
-  $('#wipe').onclick=e=>{const b=e.target;if(b.dataset.c){db=EMPTY();save();render();toast('All data deleted')}else{b.dataset.c=1;b.textContent='Tap again to delete everything'}};
+  $('#bGo').onclick=e=>{try{const d=JSON.parse($('#bTxt').value);if(!d.parties||!d.tx||!d.lots)throw 0;
+    if(CLOUD&&!e.target.dataset.c){e.target.dataset.c=1;e.target.textContent='This replaces the data for EVERYONE. Tap again to confirm';return}
+    db={parties:d.parties,customers:d.customers||[],lots:d.lots,tx:d.tx};save();render();toast('Backup restored')}catch(x){toast('That text is not a valid backup')}};
+  const w=$('#wipe');if(w)w.onclick=e=>{const b=e.target;if(b.dataset.c){db=EMPTY();save();render();toast('All data deleted')}else{b.dataset.c=1;b.textContent='Tap again to delete everything'}};
+  const lo=$('#logout');if(lo)lo.onclick=()=>fbAuth.signOut();
 }
 
 // ---------- accounts (Cust) ----------
@@ -287,7 +333,7 @@ function payForm(type,who,edit){
     const acc=$('#acc').value,a=num($('#pa').value);
     if(!acc){$('#er').textContent='Select the account';return}
     if(a<=0){$('#er').textContent='Enter the amount';return}
-    const rec={id:e?e.id:uid(),seq:e?e.seq:db.seq++,type,who:acc,date:$('#pd').value||today(),amount:a,note:$('#pnote').value.trim()};
+    const rec={id:e?e.id:uid(),seq:e?e.seq:nextSeq(),type,who:acc,date:$('#pd').value||today(),amount:a,note:$('#pnote').value.trim()};
     rec.no=e&&e.who===acc?e.no:nextNo(type,acc);
     if(e)db.tx=db.tx.filter(x=>x.id!==e.id);
     db.tx.push(rec);save();closeDlg();render();toast('Saved');
@@ -380,7 +426,7 @@ function buyForm(kind,who,edit){
     const snap=JSON.stringify(db);
     if(e){const err=revertTx(e);if(err){db=JSON.parse(snap);$('#er').textContent=err;return}}
     db.lots.push(...lots);
-    db.tx.push({id:e?e.id:uid(),seq:e?e.seq:db.seq++,type:kind,who:acc,date,amount,paid,lines,note:$('#pnote').value.trim(),no:e&&e.who===acc?e.no:nextNo(kind,acc)});
+    db.tx.push({id:e?e.id:uid(),seq:e?e.seq:nextSeq(),type:kind,who:acc,date,amount,paid,lines,note:$('#pnote').value.trim(),no:e&&e.who===acc?e.no:nextNo(kind,acc)});
     save();closeDlg();render();toast(isStock?'Stock added':'Invoice saved, stock added');
   };
 }
@@ -425,7 +471,7 @@ function saleForm(who,edit){
     });
     const amount=lines.reduce((a,l)=>a+l.qty*l.price,0);
     const received=acc==='cash'?amount:Math.min(num($('#rec').value),amount);
-    db.tx.push({id:e?e.id:uid(),seq:e?e.seq:db.seq++,type:'sale',who:acc,date,amount,received,lines,note:$('#pnote').value.trim(),no:e&&e.who===acc?e.no:nextNo('sale',acc)});
+    db.tx.push({id:e?e.id:uid(),seq:e?e.seq:nextSeq(),type:'sale',who:acc,date,amount,received,lines,note:$('#pnote').value.trim(),no:e&&e.who===acc?e.no:nextNo('sale',acc)});
     save();closeDlg();render();toast('Invoice saved, stock reduced');
   };
 }
@@ -469,5 +515,63 @@ function editLots(name){
   $('#ok').onclick=()=>{document.querySelectorAll('.e-exp').forEach(i=>{const l=db.lots.find(x=>x.id===i.dataset.id);if(l)l.expiry=i.value||''});save();closeDlg();render();toast('Saved')};
 }
 
-render();
+// ---------- shared database: login and live sync ----------
+function showLogin(msg){
+  chrome('Sajad Pharmacy','Log in',false,'');$('#tabs').hidden=true;
+  $('#app').innerHTML=`<div class="card"><div class="form"><label for="em">Email<input id="em" type="email" autocomplete="username" autocapitalize="none" autocorrect="off"></label>
+  <label for="pw">Password<input id="pw" type="password" autocomplete="current-password"></label><div class="err" id="er">${esc(msg||'')}</div><button class="btn" id="login">Log in</button></div></div>
+  <p class="muted" style="font-size:13px">Ask the owner for your email and password.</p>`;
+  const go1=()=>{
+    const em=$('#em').value.trim(),pw=$('#pw').value;if(!em||!pw){$('#er').textContent='Enter your email and password';return}
+    $('#login').disabled=true;
+    fbAuth.signInWithEmailAndPassword(em,pw).catch(e=>{$('#login').disabled=false;
+      $('#er').textContent=/invalid|wrong|not-found|user-disabled/.test(e.code)?'Wrong email or password':/network/.test(e.code)?'No internet. The first login needs internet.':'Could not log in ('+e.code+')'})};
+  $('#login').onclick=go1;$('#pw').onkeydown=e=>{if(e.key==='Enter')go1()};
+}
+let rq=false;
+function scheduleRender(){ // do not disturb someone who is typing in the page
+  const a=document.activeElement;
+  if(a&&a.closest&&a.closest('#app')&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)){if(!rq){rq=true;a.addEventListener('blur',()=>{rq=false;setTimeout(render,60)},{once:true})}return}
+  render();
+}
+function stopSync(){unsubs.forEach(u=>u());unsubs=[];ready=0}
+function startSync(){
+  stopSync();db=EMPTY();synced={parties:{},customers:{},lots:{},tx:{}};migChecked=false;render();
+  COLS.forEach(c=>{
+    let first=true;
+    unsubs.push(fbStore.collection(c).onSnapshot(snap=>{
+      const arr=[],sy={};
+      snap.forEach(d=>{const x={...d.data(),id:d.id};if(c==='lots'&&x.item===undefined)return;arr.push(x);sy[d.id]=sig(x)});
+      db[c]=arr;synced[c]=sy;
+      if(first){first=false;ready++}
+      if(ready>=COLS.length){scheduleRender();offerMigration()}
+    },err=>toast('Sync problem: '+(err.code||err.message))));
+  });
+}
+// one-time: move the data saved on this phone (older version) into the shared database
+async function offerMigration(){
+  if(migChecked)return;migChecked=true;
+  let local=null;try{local=load()}catch(e){}
+  if(!local||!(local.parties||[]).length&&!(local.customers||[]).length&&!(local.lots||[]).length)return;
+  try{if(localStorage.getItem(KEY+'.skipmig')||localStorage.getItem(KEY+'.migrated'))return}catch(e){}
+  try{
+    for(const c of COLS){const r=await fbStore.collection(c).limit(1).get({source:'server'});if(!r.empty)return}
+  }catch(e){return}
+  openDlg(`<h2>Upload this phone's data?</h2><p class="muted">This phone has saved data: ${local.parties.length} parties, ${local.customers.length} customers, ${local.lots.length} stock lots, ${local.tx.length} entries. The shared database is empty. Upload it so everyone sees the same data.<br><br><b>Do this on one phone only, once.</b></p>
+  <div class="btns two"><button class="btn o" id="mNo">Not now</button><button class="btn" id="mYes">Upload</button></div>`);
+  $('#mNo').onclick=()=>{closeDlg()};
+  $('#mYes').onclick=()=>{db={parties:local.parties||[],customers:local.customers||[],lots:local.lots||[],tx:local.tx||[]};save();try{localStorage.setItem(KEY+'.migrated','1')}catch(e){}closeDlg();render();toast('Uploaded')};
+}
+function boot(){
+  if(!CLOUD){render();return}
+  try{
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    fbAuth=firebase.auth();fbStore=firebase.firestore();
+    if(window.FIREBASE_EMULATOR){fbStore.useEmulator(...window.FIREBASE_EMULATOR.fs);fbAuth.useEmulator(window.FIREBASE_EMULATOR.auth,{disableWarnings:true})}
+    fbStore.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  }catch(e){$('#app').innerHTML='<div class="card err">Could not start the shared database: '+esc(e.message)+'</div>';return}
+  fbAuth.onAuthStateChanged(u=>{user=u;if(u)startSync();else{stopSync();db=EMPTY();render()}});
+  addEventListener('online',()=>render());addEventListener('offline',()=>render());
+}
+boot();
 </script>

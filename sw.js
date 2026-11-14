@@ -1,6 +1,9 @@
-const C='sajad-pharmacy-v4';const FILES=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
+const C='sajad-pharmacy-v5';
+const FILES=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','firebase-config.js','vendor/firebase-app-compat.js','vendor/firebase-auth-compat.js','vendor/firebase-firestore-compat.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
-// network first so updates arrive when online; cache when offline
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;
- e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html'))))});
+// App files only: network first so updates arrive when online, cache when offline.
+// Calls to the shared database (other websites) are left alone.
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET'||new URL(e.request.url).origin!==self.location.origin)return;
+  e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html'))))});
