@@ -183,7 +183,7 @@ const expiring=()=>db.lots.filter(l=>l.qty>0&&expiryInfo(l.expiry)).sort((a,b)=>
 const lotSource=l=>l.party==='cash'?'cash purchase':l.party?(person('party',l.party)?.name||'?'):'added stock';
 
 // ---------- navigation ----------
-let view={n:'home'},crTab='cust',invFilter='all',invTerm='';
+let view={n:'home'},crTerm='',crTab='cust',invFilter='all',invTerm='';
 function go(n,id,extra){view={n,id,...extra};try{window.scrollTo(0,0)}catch(e){}render()}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.v)});
 $('#back').addEventListener('click',()=>go(view.back||'accts'));
@@ -235,15 +235,22 @@ function rHome(){
 }
 
 // ---------- accounts (Cust) ----------
-let acctTab='cust',stockTerm='';
+let acctTab='cust',stockTerm='',acctTerm='';
+function acctRows(k,term,from){
+  const rows=sortedList(k).filter(p=>matchAcct(p,term));
+  return rows.length?rows.map(p=>{const s=stats(k,p.id);
+    return`<button class="li" onclick="go('acct','${p.id}',{kind:'${k}',back:'${from}'})"><span><span class="no">${p.no}</span>${esc(p.name)}<small>${esc(p.address||'')}</small></span><b class="${s.bal>0?(k==='cust'?'green':'red'):''}">${R(s.bal)}</b></button>`}).join(''):`<div class="empty">${list(k).length?'No account matches.':'No '+(k==='cust'?'customers':'parties')+' yet.'}</div>`;
+}
 function rAccts(){
   chrome('Accounts','Parties and customers',false,'accts');
   const k=acctTab;
   $('#app').innerHTML=`<div class="seg"><button aria-pressed="${k==='cust'}" onclick="acctTab='cust';rAccts()">Customers</button><button aria-pressed="${k==='party'}" onclick="acctTab='party';rAccts()">Parties</button></div>
-  <div class="card" style="padding:2px 14px">${list(k).length?sortedList(k).map(p=>{const s=stats(k,p.id);
-    return`<button class="li" onclick="go('acct','${p.id}',{kind:'${k}',back:'accts'})"><span><span class="no">${p.no}</span>${esc(p.name)}<small>${esc(p.address||'')}</small></span><b class="${s.bal>0?(k==='cust'?'green':'red'):''}">${R(s.bal)}</b></button>`}).join(''):`<div class="empty">No ${k==='cust'?'customers':'parties'} yet.</div>`}</div>
+  <input id="as" placeholder="Search by name or number" autocomplete="off" value="${esc(acctTerm)}" aria-label="Search accounts">
+  <div class="card" id="alist" style="padding:2px 14px;margin-top:10px"></div>
   <p class="muted" style="font-size:12.5px">Account number 0 is built in: ${k==='cust'?'counter sale to a walk-in customer':'cash purchase without a party'}. No balance is kept for it.</p>
   <div class="btns"><button class="btn" onclick="personForm('${k}')">+ Add ${k==='cust'?'customer':'party'}</button></div>`;
+  const draw=()=>{$('#alist').innerHTML=acctRows(k,acctTerm,'accts')};
+  $('#as').oninput=e=>{acctTerm=e.target.value;draw()};draw();
 }
 function personForm(kind,edit){
   const e=edit?person(kind,edit):null;
@@ -316,19 +323,39 @@ function rCrDr(){
   $('#app').innerHTML=`<div class="seg"><button aria-pressed="${cust}" onclick="crTab='cust';rCrDr()">Account Receivable</button><button aria-pressed="${!cust}" onclick="crTab='party';rCrDr()">Account Payable</button></div>
   <div class="card"><div class="lbl">${cust?'Total to receive':'Total to pay'}</div><div class="big ${cust?'green':'red'}">${R(total)}</div></div>
   <div class="btns"><button class="btn" onclick="payForm('${PAY[k]}')">+ ${cust?'Received from customer':'Payment to party'}</button></div>
-  <h3>${cust?'Customers':'Parties'}</h3><div class="card" style="padding:2px 14px">${list(k).length?sortedList(k).map(p=>{const s=stats(k,p.id);
-    return`<button class="li" onclick="go('acct','${p.id}',{kind:'${k}',back:'crdr'})"><span><span class="no">${p.no}</span>${esc(p.name)}<small>Prev ${R(s.prev)} · ${cust?'Rec':'Paid'} ${R(s.settled)}</small></span><b class="${s.bal>0?(cust?'green':'red'):''}">${R(s.bal)}</b></button>`}).join(''):'<div class="empty">Add accounts first (Accounts tab).</div>'}</div>
+  <h3>${cust?'Customers':'Parties'}</h3><input id="cs" placeholder="Search by name or number" autocomplete="off" value="${esc(crTerm)}" aria-label="Search accounts"><div class="card" id="clist" style="padding:2px 14px;margin-top:10px"></div>
   <h3>Edit Credit Debit</h3><div class="card" style="padding:2px 14px">${entries.length?entries.map(t=>txRow(t,true)).join(''):'<div class="empty">No entries yet. Tap an entry here to edit it.</div>'}</div>`;
+  const draw=()=>{$('#clist').innerHTML=acctRows(k,crTerm,'crdr')};$('#cs').oninput=e=>{crTerm=e.target.value;draw()};draw();
 }
-const acctOptions=(kind,sel,cashLabel)=>`<option value="">Select account…</option>${cashLabel?`<option value="cash" ${sel==='cash'?'selected':''}>0 · ${cashLabel}</option>`:''}${sortedList(kind).map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${p.no} · ${esc(p.name)}</option>`).join('')}`;
+const accField=label=>`<label for="accq">${label}<input id="accq" placeholder="Type name or number" autocomplete="off"></label><input type="hidden" id="acc" value=""><div class="pick" id="accres" hidden></div>`;
+const matchAcct=(a,term)=>{const toks=term.trim().toLowerCase().split(/\s+/).filter(Boolean);const hay=(a.no+' '+a.name+' '+(a.address||'')).toLowerCase();return toks.every(t=>hay.includes(t))};
+// type-ahead account search: type part of the name or the number, tap the account
+function wireAcc(kind,cashLabel,sel,onPick){
+  const q=$('#accq'),h=$('#acc'),box=$('#accres');
+  const all=()=>[...(cashLabel?[{id:'cash',no:0,name:cashLabel,address:''}]:[]),...sortedList(kind)];
+  const text=a=>a.no+' · '+a.name;
+  const cur=sel?all().find(a=>a.id===sel):null;if(cur){q.value=text(cur);h.value=cur.id}
+  let res=[];
+  const show=()=>{
+    const t=q.value.trim().toLowerCase();
+    res=all().filter(a=>matchAcct(a,t)).sort((a,b)=>(+(String(b.no)===t))-(+(String(a.no)===t))||(+b.name.toLowerCase().startsWith(t))-(+a.name.toLowerCase().startsWith(t))||a.no-b.no).slice(0,50);
+    box.innerHTML=res.length?res.map((a,i)=>{const st=a.id==='cash'?null:stats(kind,a.id);return`<button type="button" class="li" data-i="${i}"><span><span class="no">${a.no}</span>${esc(a.name)}${a.address?`<small>${esc(a.address)}</small>`:''}</span>${st?`<b class="muted">${R(st.bal)}</b>`:''}</button>`}).join(''):'<div class="muted" style="padding:9px 0;font-size:13px">No account found. Add it in the Accounts tab.</div>';
+    box.hidden=false;
+  };
+  const choose=a=>{h.value=a.id;q.value=text(a);box.hidden=true;onPick&&onPick()};
+  box.addEventListener('click',e=>{const b=e.target.closest('button');if(b)choose(res[+b.dataset.i])});
+  q.addEventListener('input',()=>{h.value='';onPick&&onPick();show()});
+  q.addEventListener('focus',()=>{if(!h.value)show()});
+  q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!h.value&&res[0]){e.preventDefault();choose(res[0])}});
+}
 function payForm(type,who,edit){
   const kind=kindOfType(type),e=edit||null,sel=e?e.who:who||'';
   openDlg(`<h2>${e?'Edit':'New'} ${type==='recv'?'received from customer':'payment to party'}</h2><div class="form" style="margin-top:12px">
-  <label for="acc">${kind==='cust'?'Customer':'Party'}<select id="acc">${acctOptions(kind,sel)}</select></label><div class="muted" id="invno"></div>
+  ${accField(kind==='cust'?'Customer':'Party')}<div class="muted" id="invno"></div>
   <div class="cols"><label for="pa">Amount (Rs)<input id="pa" type="number" inputmode="decimal" min="0" value="${e?e.amount:''}"></label><label for="pd">Date<input id="pd" type="date" value="${e?e.date:today()}"></label></div>
   <label for="pnote">Note (optional)<input id="pnote" placeholder="cash, bank, cheque…" value="${e?esc(e.note||''):''}"></label><div class="err" id="er"></div>
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
-  const upd=()=>{const a=$('#acc').value;$('#invno').textContent=a?'Entry no. '+(e&&e.who===a?e.no:nextNo(type,a)):''};$('#acc').onchange=upd;upd();
+  const upd=()=>{const a=$('#acc').value;$('#invno').textContent=a?'Entry no. '+(e&&e.who===a?e.no:nextNo(type,a)):''};wireAcc(kind,null,sel,upd);upd();
   $('#ok').onclick=()=>{
     const acc=$('#acc').value,a=num($('#pa').value);
     if(!acc){$('#er').textContent='Select the account';return}
@@ -400,7 +427,7 @@ function buyForm(kind,who,edit){
   const initial=e?e.lines.map(l=>{const lot=db.lots.find(x=>x.id===l.lot)||{};return{name:l.item,qty:l.qty,rate:l.rate,exp:lot.expiry||''}}):null;
   openDlg(`<h2>${e?'Edit':'New'} ${isStock?'stock entry':'purchase invoice'}</h2>
   <div class="form" style="margin-top:12px">
-  ${isStock?'<div class="muted" style="font-size:13px">Add stock you already have, without a party.</div>':`<label for="acc">Party<select id="acc">${acctOptions('party',sel,'Cash purchase (no party)')}</select></label><div class="muted" id="invno"></div>`}
+  ${isStock?'<div class="muted" style="font-size:13px">Add stock you already have, without a party.</div>':`${accField('Party')}<div class="muted" id="invno"></div>`}
   <label for="pd">Date<input id="pd" type="date" value="${e?e.date:today()}"></label>
   <div id="lines" class="form"></div><button class="btn o" id="addLine" type="button">+ Add another item</button>
   <div class="tot"><span>Total</span><span id="tt">Rs 0</span></div>
@@ -409,7 +436,7 @@ function buyForm(kind,who,edit){
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
   setupLines('buy',initial);
   const upd=()=>{if(isStock)return;const a=$('#acc').value;$('#invno').textContent=a?'Invoice no. '+(e&&e.who===a?e.no:nextNo('purchase',a)):'';$('#paidBox').hidden=a==='cash'};
-  if(!isStock){$('#acc').onchange=upd;upd()}
+  if(!isStock){wireAcc('party','Cash purchase (no party)',sel,upd);upd()}
   $('#ok').onclick=()=>{
     const acc=isStock?'stock':$('#acc').value;
     if(!acc){$('#er').textContent='Select the party, or 0 for cash purchase';return}
@@ -438,7 +465,7 @@ function saleForm(who,edit){
   const initial=e?e.lines.map(l=>({name:l.item,qty:l.qty,rate:l.price,extra:e.lines.map(x=>x.item)})):null;
   if(initial)initial.extra=e.lines.map(x=>x.item);
   openDlg(`<h2>${e?'Edit':'New'} sale invoice</h2><div class="form" style="margin-top:12px">
-  <label for="acc">Customer<select id="acc">${acctOptions('cust',sel,'Counter sale (no customer)')}</select></label><div class="muted" id="invno"></div>
+  ${accField('Customer')}<div class="muted" id="invno"></div>
   <label for="pd">Date<input id="pd" type="date" value="${e?e.date:today()}"></label>
   <div id="lines" class="form"></div><button class="btn o" id="addLine" type="button">+ Add another item</button>
   <div class="tot"><span>Total</span><span id="tt">Rs 0</span></div>
@@ -446,7 +473,7 @@ function saleForm(who,edit){
   <label for="pnote">Note (optional)<input id="pnote" value="${e?esc(e.note||''):''}"></label><div class="err" id="er"></div>
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
   setupLines('sell',initial);
-  const upd=()=>{const a=$('#acc').value;$('#invno').textContent=a?'Invoice no. '+(e&&e.who===a?e.no:nextNo('sale',a)):'';$('#recBox').hidden=a==='cash'};$('#acc').onchange=upd;upd();
+  const upd=()=>{const a=$('#acc').value;$('#invno').textContent=a?'Invoice no. '+(e&&e.who===a?e.no:nextNo('sale',a)):'';$('#recBox').hidden=a==='cash'};wireAcc('cust','Counter sale (no customer)',sel,upd);upd();
   $('#ok').onclick=()=>{
     const acc=$('#acc').value;
     if(!acc){$('#er').textContent='Select the customer, or 0 for counter sale';return}
