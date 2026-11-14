@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
 <style>
-/* Layout: phone-first. Top bar, one page at a time, bottom tab bar (Home, Parties, Customers, Stock). */
+/* Layout: phone-first. Top bar, one page at a time, bottom tabs (Balance, Invoice, Cr/Dr, Stock, Accounts). */
 :root{
   --bg:#f3f6f5; --surface:#ffffff; --fg:#14211e; --muted:#5b6b67; --line:#d9e2df;
   --accent:#0f6b5c; --accent-fg:#ffffff; --accent-soft:#e1f0ec;
@@ -27,27 +27,28 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
 header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--accent);color:var(--accent-fg)}
 header .wrap{padding-block:12px;display:flex;align-items:center;gap:10px}
-header h1{font:700 18px var(--font-head);margin:0;flex:1}
-header small{display:block;font:400 12px var(--font-body);opacity:.85}
-header .back{background:none;border:0;color:inherit;font-size:22px;cursor:pointer;padding:0 6px 0 0;display:none}
+header h1{font:700 18px var(--font-head);margin:0;flex:1;min-width:0}
+header small{display:block;font:400 12px var(--font-body);opacity:.9}
+header .back{background:none;border:0;color:inherit;font-size:24px;cursor:pointer;padding:0 6px 0 0;display:none}
 main{padding-block:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .big{font:700 24px var(--font-head);font-variant-numeric:tabular-nums}
-.red{color:var(--bad)}.green{color:var(--good)}.amber{color:var(--warn)}.muted{color:var(--muted)}
-.alert{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-weight:600;cursor:pointer;display:block;width:100%;border:0;text-align:left;font:600 14px var(--font-body)}
+.red{color:var(--bad)}.green{color:var(--good)}.muted{color:var(--muted)}
+.alert{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;display:block;width:100%;border:0;text-align:left;font:600 14px var(--font-body)}
 .alert.bad{background:var(--bad-soft);color:var(--bad)}
 .li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer;width:100%;background:none;border-left:0;border-right:0;border-top:0;color:var(--fg);text-align:left;font:15px var(--font-body)}
 .li:last-child{border-bottom:0}
+.li>span{min-width:0}
 .li small{display:block;color:var(--muted);font-size:12.5px}
 .li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.no{display:inline-block;min-width:38px;color:var(--muted);font-weight:600}
 .nolink{cursor:default}
 .pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
 .btn{display:block;width:100%;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);padding:12px;border-radius:10px;font:700 15px var(--font-body);cursor:pointer;text-align:center}
 .btn.o{background:var(--surface);color:var(--accent)}
 .btn.danger{background:var(--surface);border-color:var(--line);color:var(--bad)}
-.btn.sm{display:inline-block;width:auto;padding:6px 12px;font-size:13px}
 .btns{display:grid;gap:8px;margin:12px 0}
 .btns.two{grid-template-columns:1fr 1fr}
 input,select{font:16px var(--font-body);padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--fg);width:100%;min-width:0}
@@ -56,54 +57,76 @@ label{display:grid;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500;m
 .cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .lineBox{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--surface)}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--accent);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.seg button{background:var(--surface);color:var(--accent);border:0;padding:10px;font:700 14px var(--font-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6}
-.tabs button{flex:1;background:none;border:0;border-top:3px solid transparent;padding:11px 0;color:var(--muted);font:600 12.5px var(--font-body);cursor:pointer}
+.tabs button{flex:1;background:none;border:0;border-top:3px solid transparent;padding:11px 0;color:var(--muted);font:600 12px var(--font-body);cursor:pointer;min-width:0}
 .tabs button[aria-current="true"]{color:var(--accent);border-top-color:var(--accent)}
-.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);padding:18px;width:min(560px,calc(100vw - 24px));max-height:92vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 h2{font:700 17px var(--font-head);margin:0 0 4px}
-h3{font:700 14px var(--font-head);margin:14px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+h3{font:700 13px var(--font-head);margin:14px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .empty{text-align:center;color:var(--muted);padding:18px 8px}
 .toast{position:fixed;bottom:calc(76px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:9px;font-weight:600;z-index:30;max-width:90vw}
 .err{color:var(--bad);font-size:13px;font-weight:600;min-height:18px}
-.tot{display:flex;justify-content:space-between;font-weight:700;padding-top:4px}
+.tot{display:flex;justify-content:space-between;font-weight:700;padding-top:4px;font-variant-numeric:tabular-nums}
+.sum{background:var(--accent-soft);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:grid;gap:4px}
+.sum div{display:flex;justify-content:space-between;font-weight:700;font-variant-numeric:tabular-nums}
+.sum .net{font:700 20px var(--font-head);border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
 textarea{width:100%;height:120px;font:12px ui-monospace,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:8px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <header><div class="wrap">
   <button class="back" id="back" aria-label="Back">‹</button>
-  <h1 id="title">Sajad Pharmacy<small id="sub"></small></h1>
+  <h1 id="title">Sajad Pharmacy</h1>
 </div></header>
 <main class="wrap" id="app"></main>
 <nav class="tabs" id="tabs">
-  <button data-v="home">Home</button><button data-v="parties">Parties</button><button data-v="customers">Customers</button><button data-v="stock">Stock</button>
+  <button data-v="home">Balance</button><button data-v="invoice">Invoice</button><button data-v="crdr">Cr / Dr</button><button data-v="stock">Stock</button><button data-v="accts">Accounts</button>
 </nav>
 <dialog id="dlg"></dialog>
 
 <script>
 // ---------- data ----------
-const KEY='ledger.v1';
-const EMPTY=()=>({shop:{name:'Sajad Pharmacy',place:'Hayatabad Medical Complex',phone:'0332 9293816'},parties:[],customers:[],lots:[],tx:[]});
+const KEY='ledger.v2';
+const EMPTY=()=>({parties:[],customers:[],lots:[],tx:[],seq:1});
 function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return null}
 let db=load()||EMPTY();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('Could not save: browser storage is blocked')}}
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-3);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const enc=s=>encodeURIComponent(s).replace(/'/g,'%27');
 const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
-const R=n=>'Rs '+Math.round(n).toLocaleString('en-PK');
+const R=n=>(n<0?'-':'')+'Rs '+Math.round(Math.abs(n)).toLocaleString('en-PK');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const fdate=d=>{const [y,m,dd]=d.split('-');return dd+'/'+m+'/'+y};
 const fexp=e=>e?e.slice(5)+'/'+e.slice(0,4):'—';
-function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2400)}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
 
-// ---------- calculations ----------
-const partyStats=id=>{let bought=0,paid=0;db.tx.forEach(t=>{if(t.who!==id)return;if(t.type==='purchase'){bought+=t.amount;paid+=t.paid||0}if(t.type==='pay')paid+=t.amount});return{bought,paid,owe:bought-paid}};
-const custStats=id=>{let given=0,recv=0;db.tx.forEach(t=>{if(t.who!==id)return;if(t.type==='sale'){given+=t.amount;recv+=t.received||0}if(t.type==='recv')recv+=t.amount});return{given,recv,due:given-recv}};
-function expiryInfo(e){ // e = 'YYYY-MM'
+// ---------- accounts and balances ----------
+// Account number 0 = no account: cash purchase (who 'cash') and counter sale (who 'cash'). No balance is kept for it.
+const BILL={party:'purchase',cust:'sale'},SETTLE={party:'paid',cust:'received'},PAY={party:'pay',cust:'recv'};
+const list=kind=>kind==='party'?db.parties:db.customers;
+const person=(kind,id)=>list(kind).find(x=>x.id===id);
+const sortedList=kind=>list(kind).slice().sort((a,b)=>a.no-b.no);
+function stats(kind,id){
+  const p=person(kind,id);let billed=0,settled=0;
+  db.tx.forEach(t=>{if(t.who!==id)return;if(t.type===BILL[kind]){billed+=t.amount;settled+=t[SETTLE[kind]]||0}else if(t.type===PAY[kind])settled+=t.amount});
+  const prev=p?num(p.prev):0;return{prev,billed,settled,bal:prev+billed-settled};
+}
+const kindOfType=t=>t==='purchase'||t==='pay'?'party':'cust';
+function whoLabel(t){
+  if(t.type==='stock')return 'Opening / added stock';
+  if(t.who==='cash')return t.type==='purchase'?'0 · Cash purchase':'0 · Counter sale';
+  const k=kindOfType(t.type),p=person(k,t.who);return p?p.no+' · '+p.name:'(deleted)';
+}
+function nextNo(type,who){let m=0;db.tx.forEach(t=>{if(t.type===type&&t.who===who&&t.no>m)m=t.no});return m+1}
+function nextAcctNo(kind){let m=0;list(kind).forEach(p=>{if(p.no>m)m=p.no});return m+1}
+function expiryInfo(e){
   if(!e)return null;const [y,m]=e.split('-').map(Number);const end=new Date(y,m,0,23,59,59);
   const days=Math.floor((end-new Date())/864e5);
   if(days<0)return{k:'bad',txt:'Expired',days};
@@ -115,256 +138,293 @@ function stockItems(){
   db.lots.filter(l=>l.qty>0).forEach(l=>{const k=l.item.trim().toLowerCase();(map[k]=map[k]||{name:l.item,qty:0,value:0,lots:[]});const it=map[k];it.qty+=l.qty;it.value+=l.qty*l.rate;it.lots.push(l)});
   return Object.values(map).sort((a,b)=>a.name.localeCompare(b.name));
 }
+const stockTotal=()=>db.lots.reduce((a,l)=>a+l.qty*l.rate,0);
 const expiring=()=>db.lots.filter(l=>l.qty>0&&expiryInfo(l.expiry)).sort((a,b)=>a.expiry.localeCompare(b.expiry));
-const partyName=id=>(db.parties.find(p=>p.id===id)||{name:'?'}).name;
-const custName=id=>(db.customers.find(p=>p.id===id)||{name:'?'}).name;
+const lotSource=l=>l.party==='cash'?'cash purchase':l.party?(person('party',l.party)?.name||'?'):'added stock';
 
 // ---------- navigation ----------
-let view={n:'home'};
-function go(n,id){view={n,id};try{window.scrollTo(0,0)}catch(e){}render()}
+let view={n:'home'},crTab='cust',invFilter='all',invTerm='';
+function go(n,id,extra){view={n,id,...extra};try{window.scrollTo(0,0)}catch(e){}render()}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.v)});
-$('#back').addEventListener('click',()=>go(view.n==='party'?'parties':'customers'));
+$('#back').addEventListener('click',()=>go(view.back||'accts'));
 function chrome(title,sub,back,tab){
   $('#title').innerHTML=esc(title)+(sub?`<small>${sub}</small>`:'');
   $('#back').style.display=back?'block':'none';
   document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===tab));
 }
-function render(){({home:rHome,parties:rParties,customers:rCustomers,stock:rStock,party:rParty,customer:rCustomer}[view.n]||rHome)()}
+function render(){({home:rHome,invoice:rInvoice,crdr:rCrDr,stock:rStock,accts:rAccts,acct:rAcct}[view.n]||rHome)()}
+function openDlg(html){const d=$('#dlg');d.innerHTML=html;if(!d.open)d.showModal();return d}
+function closeDlg(){$('#dlg').close()}
 
-// ---------- home / balance sheet ----------
+// ---------- balance sheet ----------
 function rHome(){
-  const invested=db.tx.filter(t=>t.type==='purchase').reduce((a,t)=>a+t.amount,0);
-  const weOwe=db.parties.reduce((a,p)=>a+partyStats(p.id).owe,0);
-  const owedUs=db.customers.reduce((a,c)=>a+custStats(c.id).due,0);
-  const stockVal=db.lots.reduce((a,l)=>a+l.qty*l.rate,0);
-  const net=stockVal+owedUs-weOwe;
-  const exp=expiring();const expired=exp.filter(l=>expiryInfo(l.expiry).k==='bad').length;
-  chrome(db.shop.name,'Balance sheet',false,'home');
+  const cust=sortedList('cust').map(c=>({c,bal:stats('cust',c.id).bal})).filter(x=>x.bal!==0);
+  const part=sortedList('party').map(p=>({p,bal:stats('party',p.id).bal})).filter(x=>x.bal!==0);
+  const stk=stockTotal();
+  const assets=cust.reduce((a,x)=>a+x.bal,0)+stk,liab=part.reduce((a,x)=>a+x.bal,0),net=assets-liab;
+  const exp=expiring(),expired=exp.filter(l=>expiryInfo(l.expiry).k==='bad').length;
+  chrome('Sajad Pharmacy','Balance sheet',false,'home');
   const empty=!db.parties.length&&!db.customers.length&&!db.lots.length;
   $('#app').innerHTML=`
   ${exp.length?`<button class="alert ${expired?'bad':''}" onclick="go('stock')">⚠ ${exp.length} stock item${exp.length>1?'s':''} ${expired?'expired or ':''}expiring within 6 months. Tap to see.</button>`:''}
-  <div class="card"><div class="lbl">Total invested (purchases from parties)</div><div class="big">${R(invested)}</div></div>
-  <div class="card"><div class="lbl">We owe parties</div><div class="big red">${R(weOwe)}</div></div>
-  <div class="card"><div class="lbl">Customers owe us</div><div class="big green">${R(owedUs)}</div></div>
-  <div class="card"><div class="lbl">Stock in hand (at purchase rate)</div><div class="big">${R(stockVal)}</div></div>
-  <div class="card" style="background:var(--accent-soft)"><div class="lbl">Net position</div><div class="big">${R(net)}</div><div class="muted" style="font-size:12.5px">Stock + customers owe us − we owe parties</div></div>
-  ${empty?`<div class="card empty">Nothing added yet. Start with <b>Parties</b> (add a party, then a purchase), or load example data to look around.<div class="btns"><button class="btn o" id="ex">Load example data</button></div></div>`:''}
-  ${db.parties.some(p=>partyStats(p.id).owe!==0)?`<h3>We owe</h3><div class="card" style="padding:2px 14px">${db.parties.filter(p=>partyStats(p.id).owe!==0).sort((a,b)=>partyStats(b.id).owe-partyStats(a.id).owe).map(p=>`<button class="li" onclick="go('party','${p.id}')"><span>${esc(p.name)}</span><b class="red">${R(partyStats(p.id).owe)}</b></button>`).join('')}</div>`:''}
-  ${db.customers.some(c=>custStats(c.id).due!==0)?`<h3>Owed to us</h3><div class="card" style="padding:2px 14px">${db.customers.filter(c=>custStats(c.id).due!==0).sort((a,b)=>custStats(b.id).due-custStats(a.id).due).map(c=>`<button class="li" onclick="go('customer','${c.id}')"><span>${esc(c.name)}</span><b class="green">${R(custStats(c.id).due)}</b></button>`).join('')}</div>`:''}
+  <div class="sum"><div><span>Assets</span><span>${R(assets)}</span></div><div><span>Liabilities</span><span>${R(liab)}</span></div><div class="net"><span>Net amount</span><span class="${net<0?'red':''}">${R(net)}</span></div></div>
+  ${empty?`<div class="card empty">Nothing added yet.<br>1. <b>Accounts</b>: add your parties and customers (with previous balance).<br>2. <b>Stock</b>: add the stock you already have.<br>3. <b>Invoice</b>: make purchase and sale bills.</div>`:''}
+  <h3>Assets (to receive + stock)</h3><div class="card" style="padding:2px 14px">
+    ${cust.map(x=>`<button class="li" onclick="go('acct','${x.c.id}',{kind:'cust',back:'home'})"><span><span class="no">${x.c.no}</span>${esc(x.c.name)} <span class="muted">(To Rec)</span></span><b class="${x.bal<0?'red':''}">${R(x.bal)}</b></button>`).join('')}
+    <button class="li" onclick="go('stock')"><span><span class="no">STK</span>Total Stock Amount</span><b>${R(stk)}</b></button></div>
+  <h3>Liabilities (to pay)</h3><div class="card" style="padding:2px 14px">
+    ${part.length?part.map(x=>`<button class="li" onclick="go('acct','${x.p.id}',{kind:'party',back:'home'})"><span><span class="no">${x.p.no}</span>${esc(x.p.name)} <span class="muted">(To Pay)</span></span><b class="${x.bal<0?'green':''}">${R(x.bal)}</b></button>`).join(''):'<div class="empty">Nothing to pay.</div>'}</div>
   <h3>Backup</h3><div class="card">
     <p class="muted" style="margin:0 0 8px;font-size:13px">Your data is only on this phone. Copy a backup now and then and keep it safe (WhatsApp it to yourself).</p>
     <div class="btns two" style="margin:0"><button class="btn o" id="bCopy">Copy backup</button><button class="btn o" id="bRest">Restore backup</button></div>
     <div id="bBox" hidden><textarea id="bTxt" style="margin-top:10px"></textarea><div class="btns"><button class="btn" id="bGo" hidden>Replace all data with this backup</button></div></div>
-    <div class="btns" style="margin-bottom:0"><button class="btn danger" id="wipe">Delete all data</button></div>
-  </div>`;
-  const ex=$('#ex');if(ex)ex.onclick=loadExample;
+    <div class="btns" style="margin-bottom:0"><button class="btn danger" id="wipe">Delete all data</button></div></div>`;
   $('#bCopy').onclick=()=>{const s=JSON.stringify(db);$('#bBox').hidden=false;$('#bGo').hidden=true;$('#bTxt').value=s;
     navigator.clipboard?.writeText(s).then(()=>toast('Backup copied')).catch(()=>{$('#bTxt').select();toast('Select all and copy the text')})};
   $('#bRest').onclick=()=>{$('#bBox').hidden=false;$('#bGo').hidden=false;$('#bTxt').value='';$('#bTxt').placeholder='Paste backup text here';$('#bTxt').focus()};
   $('#bGo').onclick=()=>{try{const d=JSON.parse($('#bTxt').value);if(!d.parties||!d.tx||!d.lots)throw 0;db=d;save();render();toast('Backup restored')}catch(e){toast('That text is not a valid backup')}};
   $('#wipe').onclick=e=>{const b=e.target;if(b.dataset.c){db=EMPTY();save();render();toast('All data deleted')}else{b.dataset.c=1;b.textContent='Tap again to delete everything'}};
 }
-function loadExample(){
-  const p1={id:uid(),name:'Ali Traders'},p2={id:uid(),name:'Care Pharma'},c1={id:uid(),name:'Khan Medical'},c2={id:uid(),name:'City Pharmacy'};
-  db.parties.push(p1,p2);db.customers.push(c1,c2);
-  const mk=(who,item,qty,rate,exp,paid)=>{const lot={id:uid(),item,qty,orig:qty,rate,expiry:exp,party:who,date:today()};db.lots.push(lot);db.tx.push({id:uid(),type:'purchase',who,date:today(),amount:qty*rate,paid,lines:[{lot:lot.id,item,qty,rate}],note:'EXAMPLE'})};
-  const m=n=>{const d=new Date();d.setMonth(d.getMonth()+n);return d.toISOString().slice(0,7)};
-  mk(p1.id,'Panadol 500mg (box)',100,320,'',20000);mk(p1.id,'Augmentin 625 (box)',30,950,m(3),10000);mk(p2.id,'Brufen 400 (box)',60,410,m(14),24000);
-  db.tx.push({id:uid(),type:'pay',who:p1.id,date:today(),amount:5000,note:'EXAMPLE'});
-  const lot=db.lots[0];lot.qty-=40;db.tx.push({id:uid(),type:'sale',who:c1.id,date:today(),amount:40*360,received:6000,lines:[{item:lot.item,qty:40,price:360,from:[{lot:lot.id,qty:40,rate:lot.rate}]}],note:'EXAMPLE'});
-  save();render();toast('Example data loaded. Delete it before real use.');
-}
 
-// ---------- parties ----------
-function rParties(){
-  const total=db.parties.reduce((a,p)=>a+partyStats(p.id).owe,0);
-  chrome('Parties','Total we owe: '+R(total),false,'parties');
-  $('#app').innerHTML=`<div class="card" style="padding:2px 14px">${db.parties.length?db.parties.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{const s=partyStats(p.id);
-    return`<button class="li" onclick="go('party','${p.id}')"><span>${esc(p.name)}<small>Bought ${R(s.bought)} · Paid ${R(s.paid)}</small></span><b class="${s.owe>0?'red':''}">${R(s.owe)}</b></button>`}).join(''):'<div class="empty">No parties yet. Add the wholesaler you buy from.</div>'}</div>
-  <div class="btns"><button class="btn" onclick="addPerson('party')">+ Add party</button></div>`;
+// ---------- accounts (Cust) ----------
+let acctTab='cust';
+function rAccts(){
+  chrome('Accounts','Parties and customers',false,'accts');
+  const k=acctTab;
+  $('#app').innerHTML=`<div class="seg"><button aria-pressed="${k==='cust'}" onclick="acctTab='cust';rAccts()">Customers</button><button aria-pressed="${k==='party'}" onclick="acctTab='party';rAccts()">Parties</button></div>
+  <div class="card" style="padding:2px 14px">${list(k).length?sortedList(k).map(p=>{const s=stats(k,p.id);
+    return`<button class="li" onclick="go('acct','${p.id}',{kind:'${k}',back:'accts'})"><span><span class="no">${p.no}</span>${esc(p.name)}<small>${esc(p.address||'')}</small></span><b class="${s.bal>0?(k==='cust'?'green':'red'):''}">${R(s.bal)}</b></button>`}).join(''):`<div class="empty">No ${k==='cust'?'customers':'parties'} yet.</div>`}</div>
+  <p class="muted" style="font-size:12.5px">Account number 0 is built in: ${k==='cust'?'counter sale to a walk-in customer':'cash purchase without a party'}. No balance is kept for it.</p>
+  <div class="btns"><button class="btn" onclick="personForm('${k}')">+ Add ${k==='cust'?'customer':'party'}</button></div>`;
 }
-function rParty(){
-  const p=db.parties.find(x=>x.id===view.id);if(!p)return go('parties');
-  const s=partyStats(p.id);chrome(p.name,'We owe: '+R(s.owe),true,'parties');
-  const txs=db.tx.filter(t=>t.who===p.id);
-  $('#app').innerHTML=`
-  <div class="card"><div class="cols"><div><div class="lbl">Bought</div><b>${R(s.bought)}</b></div><div><div class="lbl">Paid</div><b>${R(s.paid)}</b></div></div>
-  <div class="lbl" style="margin-top:8px">We owe</div><div class="big ${s.owe>0?'red':''}">${R(s.owe)}</div></div>
-  <div class="btns two"><button class="btn" onclick="purchaseForm('${p.id}')">+ Purchase</button><button class="btn o" onclick="payForm('pay','${p.id}')">+ Payment</button></div>
-  <h3>History</h3><div class="card" style="padding:2px 14px">${txs.length?txs.map(t=>txRow(t)).join(''):'<div class="empty">No entries yet.</div>'}</div>
-  <div class="btns two"><button class="btn o" onclick="renameForm('party','${p.id}')">Edit name</button><button class="btn danger" onclick="delPerson('party','${p.id}')">Delete party</button></div>`;
-}
-
-// ---------- customers ----------
-function rCustomers(){
-  const total=db.customers.reduce((a,c)=>a+custStats(c.id).due,0);
-  chrome('Customers','Owed to us: '+R(total),false,'customers');
-  $('#app').innerHTML=`<div class="card" style="padding:2px 14px">${db.customers.length?db.customers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{const s=custStats(c.id);
-    return`<button class="li" onclick="go('customer','${c.id}')"><span>${esc(c.name)}<small>Given ${R(s.given)} · Received ${R(s.recv)}</small></span><b class="${s.due>0?'green':''}">${R(s.due)}</b></button>`}).join(''):'<div class="empty">No customers yet. Add a shop you supply.</div>'}</div>
-  <div class="btns"><button class="btn" onclick="addPerson('customer')">+ Add customer</button></div>`;
-}
-function rCustomer(){
-  const c=db.customers.find(x=>x.id===view.id);if(!c)return go('customers');
-  const s=custStats(c.id);chrome(c.name,'Owes us: '+R(s.due),true,'customers');
-  const txs=db.tx.filter(t=>t.who===c.id);
-  $('#app').innerHTML=`
-  <div class="card"><div class="cols"><div><div class="lbl">Given</div><b>${R(s.given)}</b></div><div><div class="lbl">Received</div><b>${R(s.recv)}</b></div></div>
-  <div class="lbl" style="margin-top:8px">Balance owed to us</div><div class="big ${s.due>0?'green':''}">${R(s.due)}</div></div>
-  <div class="btns two"><button class="btn" onclick="saleForm('${c.id}')">+ Sale</button><button class="btn o" onclick="payForm('recv','${c.id}')">+ Received</button></div>
-  <h3>History</h3><div class="card" style="padding:2px 14px">${txs.length?txs.map(t=>txRow(t)).join(''):'<div class="empty">No entries yet.</div>'}</div>
-  <div class="btns two"><button class="btn o" onclick="renameForm('customer','${c.id}')">Edit name</button><button class="btn danger" onclick="delPerson('customer','${c.id}')">Delete customer</button></div>`;
-}
-function txRow(t){
-  const kind={purchase:'Purchase',pay:'Payment made',sale:'Sale',recv:'Payment received'}[t.type];
-  const items=(t.lines||[]).map(l=>esc(l.item)+' ×'+l.qty).join(', ');
-  const extra=t.type==='purchase'&&t.paid?` · paid ${R(t.paid)}`:t.type==='sale'&&t.received?` · received ${R(t.received)}`:'';
-  return`<button class="li" onclick="txDetail('${t.id}')"><span>${kind}<small>${fdate(t.date)}${items?' · '+items:''}${extra}${t.note&&t.note!=='EXAMPLE'?' · '+esc(t.note):''}</small></span><b>${R(t.amount)}</b></button>`;
-}
-// sorted newest first is done where needed
-const _sortTx=()=>db.tx.sort((a,b)=>b.date.localeCompare(a.date));
-
-// ---------- people ----------
-function openDlg(html){const d=$('#dlg');d.innerHTML=html;if(!d.open)d.showModal();return d}
-function closeDlg(){$('#dlg').close()}
-function addPerson(kind){
-  openDlg(`<h2>Add ${kind}</h2><div class="form" style="margin-top:12px"><label for="pn">Name<input id="pn" autocomplete="off"></label><div class="err" id="er"></div>
+function personForm(kind,edit){
+  const e=edit?person(kind,edit):null;
+  openDlg(`<h2>${e?'Edit':'Add'} ${kind==='cust'?'customer':'party'}</h2><div class="form" style="margin-top:12px">
+  <div class="cols"><label for="pno">Account no.<input id="pno" type="number" inputmode="numeric" min="1" value="${e?e.no:nextAcctNo(kind)}"></label>
+  <label for="pprev">Previous balance (Rs)<input id="pprev" type="number" inputmode="decimal" value="${e&&e.prev?e.prev:''}" placeholder="0"></label></div>
+  <label for="pn">Name<input id="pn" autocomplete="off" value="${e?esc(e.name):''}"></label>
+  <label for="pad">Address (optional)<input id="pad" autocomplete="off" value="${e?esc(e.address||''):''}"></label>
+  <div class="muted" style="font-size:12.5px">Previous balance is what ${kind==='cust'?'this customer already owes you':'you already owe this party'} before using this app.</div><div class="err" id="er"></div>
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
   setTimeout(()=>$('#pn').focus(),50);
-  $('#ok').onclick=()=>{const n=$('#pn').value.trim();if(!n){$('#er').textContent='Enter a name';return}
-    const list=kind==='party'?db.parties:db.customers;
-    if(list.some(x=>x.name.toLowerCase()===n.toLowerCase())){$('#er').textContent='This name already exists';return}
-    list.push({id:uid(),name:n});save();closeDlg();render();toast('Added')};
-}
-function renameForm(kind,id){
-  const list=kind==='party'?db.parties:db.customers;const p=list.find(x=>x.id===id);
-  openDlg(`<h2>Edit name</h2><div class="form" style="margin-top:12px"><label for="pn">Name<input id="pn" value="${esc(p.name)}"></label>
-  <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
-  $('#ok').onclick=()=>{const n=$('#pn').value.trim();if(!n)return;p.name=n;save();closeDlg();render()};
+  $('#ok').onclick=()=>{
+    const no=Math.floor(num($('#pno').value)),name=$('#pn').value.trim();
+    if(no<1){$('#er').textContent='Account number must be 1 or more (0 is for cash)';return}
+    if(!name){$('#er').textContent='Enter a name';return}
+    if(list(kind).some(x=>x.no===no&&(!e||x.id!==e.id))){$('#er').textContent='This account number is already used';return}
+    const rec={no,name,address:$('#pad').value.trim(),prev:num($('#pprev').value)};
+    if(e)Object.assign(e,rec);else list(kind).push({id:uid(),...rec});
+    save();closeDlg();render();toast('Saved');
+  };
 }
 function delPerson(kind,id){
-  if(db.tx.some(t=>t.who===id)){toast('Delete this '+kind+"'s entries first");return}
-  openDlg(`<h2>Delete ${kind}?</h2><p class="muted">This cannot be undone.</p><div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn danger" id="ok">Delete</button></div>`);
-  $('#ok').onclick=()=>{if(kind==='party')db.parties=db.parties.filter(x=>x.id!==id);else db.customers=db.customers.filter(x=>x.id!==id);save();closeDlg();go(kind==='party'?'parties':'customers')};
+  if(db.tx.some(t=>t.who===id)){toast('Delete or move its entries first');return}
+  openDlg(`<h2>Delete this ${kind==='cust'?'customer':'party'}?</h2><p class="muted">This cannot be undone.</p><div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn danger" id="ok">Delete</button></div>`);
+  $('#ok').onclick=()=>{if(kind==='party')db.parties=db.parties.filter(x=>x.id!==id);else db.customers=db.customers.filter(x=>x.id!==id);save();closeDlg();go('accts')};
+}
+function rAcct(){
+  const kind=view.kind,p=person(kind,view.id);if(!p)return go('accts');
+  const s=stats(kind,p.id),cust=kind==='cust';
+  chrome(p.no+' · '+p.name,(cust?'Owes us: ':'We owe: ')+R(s.bal),true,view.back==='home'?'home':'accts');
+  const txs=db.tx.filter(t=>t.who===p.id).sort((a,b)=>b.seq-a.seq);
+  $('#app').innerHTML=`
+  <div class="card"><div class="cols"><div><div class="lbl">Previous</div><b>${R(s.prev)}</b></div><div><div class="lbl">${cust?'Sales':'Purchases'}</div><b>${R(s.billed)}</b></div></div>
+  <div class="cols" style="margin-top:8px"><div><div class="lbl">${cust?'Received':'Paid'}</div><b>${R(s.settled)}</b></div><div><div class="lbl">Balance</div><div class="big ${s.bal>0?(cust?'green':'red'):''}">${R(s.bal)}</div></div></div>
+  ${p.address?`<div class="muted" style="margin-top:6px;font-size:13px">${esc(p.address)}</div>`:''}</div>
+  <div class="btns two"><button class="btn" onclick="${cust?'saleForm':'buyForm'}(${cust?'':"'purchase',"}'${p.id}')">+ ${cust?'Sale invoice':'Purchase invoice'}</button><button class="btn o" onclick="payForm('${PAY[kind]}','${p.id}')">+ ${cust?'Received':'Payment'}</button></div>
+  <h3>History</h3><div class="card" style="padding:2px 14px">${txs.length?txs.map(txRow).join(''):'<div class="empty">No entries yet.</div>'}</div>
+  <div class="btns two"><button class="btn o" onclick="personForm('${kind}','${p.id}')">Edit account</button><button class="btn danger" onclick="delPerson('${kind}','${p.id}')">Delete account</button></div>`;
+}
+const TXNAME={purchase:'Purchase',sale:'Sale',stock:'Stock added',pay:'Paid to party',recv:'Received'};
+function txRow(t,showWho){
+  const items=(t.lines||[]).map(l=>esc(l.item)+' ×'+l.qty).join(', ');
+  const extra=t.type==='purchase'&&t.paid&&t.who!=='cash'?` · paid ${R(t.paid)}`:t.type==='sale'&&t.received&&t.who!=='cash'?` · received ${R(t.received)}`:'';
+  return`<button class="li" onclick="txDetail('${t.id}')"><span>${TXNAME[t.type]} #${t.no}<small>${showWho?esc(whoLabel(t))+' · ':''}${fdate(t.date)}${items?' · '+items:''}${extra}${t.note?' · '+esc(t.note):''}</small></span><b>${R(t.amount)}</b></button>`;
 }
 
-// ---------- payments ----------
-function payForm(type,id){
-  const isPay=type==='pay';
-  openDlg(`<h2>${isPay?'Payment to '+esc(partyName(id)):'Received from '+esc(custName(id))}</h2><div class="form" style="margin-top:12px">
-  <div class="cols"><label for="pa">Amount (Rs)<input id="pa" type="number" inputmode="decimal" min="0"></label><label for="pd">Date<input id="pd" type="date" value="${today()}"></label></div>
-  <label for="pnote">Note (optional)<input id="pnote" placeholder="cash, bank, cheque…"></label><div class="err" id="er"></div>
+// ---------- invoice page (new + view) ----------
+function rInvoice(){
+  chrome('Invoice','Sale and purchase bills',false,'invoice');
+  $('#app').innerHTML=`
+  <div class="btns two"><button class="btn" onclick="saleForm()">+ Sale invoice</button><button class="btn" onclick="buyForm('purchase')">+ Purchase invoice</button></div>
+  <h3>Inv View (find and edit)</h3>
+  <div class="cols"><input id="is" placeholder="Search name, no., item" value="${esc(invTerm)}" aria-label="Search"><select id="if" aria-label="Filter"><option value="all">All entries</option><option value="sale">Sales</option><option value="purchase">Purchases</option><option value="stock">Stock added</option><option value="pay">Paid to parties</option><option value="recv">Received</option></select></div>
+  <div class="card" id="ilist" style="padding:2px 14px;margin-top:10px"></div>`;
+  $('#if').value=invFilter;
+  const draw=()=>{
+    const q=invTerm.trim().toLowerCase();
+    const rows=db.tx.filter(t=>(invFilter==='all'||t.type===invFilter)&&(!q||(whoLabel(t)+' '+t.no+' '+(t.lines||[]).map(l=>l.item).join(' ')).toLowerCase().includes(q))).sort((a,b)=>b.seq-a.seq);
+    $('#ilist').innerHTML=rows.length?rows.slice(0,100).map(t=>txRow(t,true)).join('')+(rows.length>100?'<div class="empty">Showing latest 100. Search to narrow.</div>':''):'<div class="empty">No entries found.</div>';
+  };
+  $('#is').oninput=e=>{invTerm=e.target.value;draw()};$('#if').onchange=e=>{invFilter=e.target.value;draw()};draw();
+}
+
+// ---------- credit / debit ----------
+function rCrDr(){
+  chrome('Credit / Debit','Receive from customers, pay parties',false,'crdr');
+  const k=crTab,cust=k==='cust';
+  const total=list(k).reduce((a,p)=>a+stats(k,p.id).bal,0);
+  const entries=db.tx.filter(t=>t.type===PAY[k]).sort((a,b)=>b.seq-a.seq).slice(0,40);
+  $('#app').innerHTML=`<div class="seg"><button aria-pressed="${cust}" onclick="crTab='cust';rCrDr()">Account Receivable</button><button aria-pressed="${!cust}" onclick="crTab='party';rCrDr()">Account Payable</button></div>
+  <div class="card"><div class="lbl">${cust?'Total to receive':'Total to pay'}</div><div class="big ${cust?'green':'red'}">${R(total)}</div></div>
+  <div class="btns"><button class="btn" onclick="payForm('${PAY[k]}')">+ ${cust?'Received from customer':'Payment to party'}</button></div>
+  <h3>${cust?'Customers':'Parties'}</h3><div class="card" style="padding:2px 14px">${list(k).length?sortedList(k).map(p=>{const s=stats(k,p.id);
+    return`<button class="li" onclick="go('acct','${p.id}',{kind:'${k}',back:'crdr'})"><span><span class="no">${p.no}</span>${esc(p.name)}<small>Prev ${R(s.prev)} · ${cust?'Rec':'Paid'} ${R(s.settled)}</small></span><b class="${s.bal>0?(cust?'green':'red'):''}">${R(s.bal)}</b></button>`}).join(''):'<div class="empty">Add accounts first (Accounts tab).</div>'}</div>
+  <h3>Edit Credit Debit</h3><div class="card" style="padding:2px 14px">${entries.length?entries.map(t=>txRow(t,true)).join(''):'<div class="empty">No entries yet. Tap an entry here to edit it.</div>'}</div>`;
+}
+const acctOptions=(kind,sel,cashLabel)=>`<option value="">Select account…</option>${cashLabel?`<option value="cash" ${sel==='cash'?'selected':''}>0 · ${cashLabel}</option>`:''}${sortedList(kind).map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${p.no} · ${esc(p.name)}</option>`).join('')}`;
+function payForm(type,who,edit){
+  const kind=kindOfType(type),e=edit||null,sel=e?e.who:who||'';
+  openDlg(`<h2>${e?'Edit':'New'} ${type==='recv'?'received from customer':'payment to party'}</h2><div class="form" style="margin-top:12px">
+  <label for="acc">${kind==='cust'?'Customer':'Party'}<select id="acc">${acctOptions(kind,sel)}</select></label><div class="muted" id="invno"></div>
+  <div class="cols"><label for="pa">Amount (Rs)<input id="pa" type="number" inputmode="decimal" min="0" value="${e?e.amount:''}"></label><label for="pd">Date<input id="pd" type="date" value="${e?e.date:today()}"></label></div>
+  <label for="pnote">Note (optional)<input id="pnote" placeholder="cash, bank, cheque…" value="${e?esc(e.note||''):''}"></label><div class="err" id="er"></div>
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
-  setTimeout(()=>$('#pa').focus(),50);
-  $('#ok').onclick=()=>{const a=num($('#pa').value);if(a<=0){$('#er').textContent='Enter the amount';return}
-    db.tx.push({id:uid(),type,who:id,date:$('#pd').value||today(),amount:a,note:$('#pnote').value.trim()});_sortTx();save();closeDlg();render();toast('Saved')};
+  const upd=()=>{const a=$('#acc').value;$('#invno').textContent=a?'Entry no. '+(e&&e.who===a?e.no:nextNo(type,a)):''};$('#acc').onchange=upd;upd();
+  $('#ok').onclick=()=>{
+    const acc=$('#acc').value,a=num($('#pa').value);
+    if(!acc){$('#er').textContent='Select the account';return}
+    if(a<=0){$('#er').textContent='Enter the amount';return}
+    const rec={id:e?e.id:uid(),seq:e?e.seq:db.seq++,type,who:acc,date:$('#pd').value||today(),amount:a,note:$('#pnote').value.trim()};
+    rec.no=e&&e.who===acc?e.no:nextNo(type,acc);
+    if(e)db.tx=db.tx.filter(x=>x.id!==e.id);
+    db.tx.push(rec);save();closeDlg();render();toast('Saved');
+  };
 }
 
-// ---------- purchase ----------
-function lineRow(kind,i){
-  if(kind==='buy')return`<div class="lineBox" data-i="${i}"><label>Item<input class="l-name" list="itemNames" placeholder="e.g. Panadol 500mg (box)" autocomplete="off"></label>
-    <div class="cols3"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0"></label><label>Rate (Rs)<input class="l-rate" type="number" inputmode="decimal" min="0"></label><label>Expiry<input class="l-exp" type="month"></label></div></div>`;
-  const opts=stockItems().map(s=>`<option value="${esc(s.name)}">${esc(s.name)} (${s.qty} left)</option>`).join('');
-  return`<div class="lineBox" data-i="${i}"><label>Item<select class="l-name"><option value="">Select item…</option>${opts}</select></label>
-    <div class="cols"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0"></label><label>Price (Rs each)<input class="l-rate" type="number" inputmode="decimal" min="0"></label></div></div>`;
+// ---------- stock in: purchase / added stock ----------
+function lineRow(kind,v){
+  v=v||{};
+  if(kind==='buy')return`<div class="lineBox"><label>Item<input class="l-name" list="itemNames" placeholder="e.g. Panadol 500mg (box)" autocomplete="off" value="${esc(v.name||'')}"></label>
+    <div class="cols3"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0" value="${v.qty||''}"></label><label>Rate (Rs)<input class="l-rate" type="number" inputmode="decimal" min="0" value="${v.rate||''}"></label><label>Expiry (optional)<input class="l-exp" type="month" value="${v.exp||''}"></label></div></div>`;
+  const names=[...new Set([...stockItems().map(s=>s.name),...(v.extra||[])])].sort();
+  return`<div class="lineBox"><label>Item<select class="l-name"><option value="">Select item…</option>${names.map(n=>{const s=stockItems().find(x=>x.name===n);return`<option value="${esc(n)}" ${v.name===n?'selected':''}>${esc(n)} (${s?s.qty:0} in stock)</option>`}).join('')}</select></label>
+    <div class="cols"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0" value="${v.qty||''}"></label><label>Price (Rs each)<input class="l-rate" type="number" inputmode="decimal" min="0" value="${v.rate||''}"></label></div></div>`;
 }
-function linesForm(kind){
-  const box=$('#lines');let n=0;
-  const add=()=>{box.insertAdjacentHTML('beforeend',lineRow(kind,n++));box.querySelectorAll('input,select').forEach(e=>e.oninput=tot)};
-  const tot=()=>{let t=0;box.querySelectorAll('.lineBox').forEach(r=>t+=num(r.querySelector('.l-qty').value)*num(r.querySelector('.l-rate').value));$('#tt').textContent=R(t);return t};
-  add();$('#addLine').onclick=add;return tot;
+function setupLines(kind,initial){
+  const box=$('#lines');
+  const tot=()=>{let t=0;box.querySelectorAll('.lineBox').forEach(r=>t+=num(r.querySelector('.l-qty').value)*num(r.querySelector('.l-rate').value));$('#tt').textContent=R(t)};
+  const add=v=>{box.insertAdjacentHTML('beforeend',lineRow(kind,v));box.querySelectorAll('input,select').forEach(e=>e.oninput=tot)};
+  (initial&&initial.length?initial:[{}]).forEach(add);$('#addLine').onclick=()=>add({extra:initial&&initial.extra});tot();
 }
-function purchaseForm(partyId){
-  openDlg(`<h2>Purchase from ${esc(partyName(partyId))}</h2><datalist id="itemNames">${[...new Set(db.lots.map(l=>l.item))].map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
-  <div class="form" style="margin-top:12px"><label for="pd">Date<input id="pd" type="date" value="${today()}"></label>
-  <div id="lines" class="form"></div><button class="btn o" id="addLine">+ Add another item</button>
+// undo a stock-affecting entry. returns an error text, or '' when done
+function revertTx(t){
+  if(t.type==='purchase'||t.type==='stock'){
+    if(t.lines.some(l=>{const lot=db.lots.find(x=>x.id===l.lot);return lot&&lot.qty!==lot.orig}))return 'Some of this stock is already sold. Edit or delete those sales first.';
+    db.lots=db.lots.filter(l=>!t.lines.some(x=>x.lot===l.id));
+  }
+  if(t.type==='sale')t.lines.forEach(l=>(l.from||[]).forEach(f=>{const lot=db.lots.find(x=>x.id===f.lot);if(lot)lot.qty+=f.qty}));
+  db.tx=db.tx.filter(x=>x.id!==t.id);return '';
+}
+function buyForm(kind,who,edit){
+  const isStock=kind==='stock',e=edit||null,sel=e?e.who:who||'';
+  const initial=e?e.lines.map(l=>{const lot=db.lots.find(x=>x.id===l.lot)||{};return{name:l.item,qty:l.qty,rate:l.rate,exp:lot.expiry||''}}):null;
+  openDlg(`<h2>${e?'Edit':'New'} ${isStock?'stock entry':'purchase invoice'}</h2><datalist id="itemNames">${[...new Set(db.lots.map(l=>l.item))].map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+  <div class="form" style="margin-top:12px">
+  ${isStock?'<div class="muted" style="font-size:13px">Add stock you already have, without a party.</div>':`<label for="acc">Party<select id="acc">${acctOptions('party',sel,'Cash purchase (no party)')}</select></label><div class="muted" id="invno"></div>`}
+  <label for="pd">Date<input id="pd" type="date" value="${e?e.date:today()}"></label>
+  <div id="lines" class="form"></div><button class="btn o" id="addLine" type="button">+ Add another item</button>
   <div class="tot"><span>Total</span><span id="tt">Rs 0</span></div>
-  <label for="paid">Paid now (Rs, leave empty if nothing paid)<input id="paid" type="number" inputmode="decimal" min="0"></label>
-  <label for="pnote">Note (optional)<input id="pnote" placeholder="bill number…"></label><div class="err" id="er"></div>
-  <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save purchase</button></div></div>`);
-  const tot=linesForm('buy');
+  ${isStock?'':`<label for="paid" id="paidBox">Paid now (Rs, leave empty if nothing paid)<input id="paid" type="number" inputmode="decimal" min="0" value="${e&&e.paid&&e.who!=='cash'?e.paid:''}"></label>`}
+  <label for="pnote">Note (optional)<input id="pnote" placeholder="bill number…" value="${e?esc(e.note||''):''}"></label><div class="err" id="er"></div>
+  <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
+  setupLines('buy',initial);
+  const upd=()=>{if(isStock)return;const a=$('#acc').value;$('#invno').textContent=a?'Invoice no. '+(e&&e.who===a?e.no:nextNo('purchase',a)):'';$('#paidBox').hidden=a==='cash'};
+  if(!isStock){$('#acc').onchange=upd;upd()}
   $('#ok').onclick=()=>{
-    const date=$('#pd').value||today();const lines=[];const lots=[];
+    const acc=isStock?'stock':$('#acc').value;
+    if(!acc){$('#er').textContent='Select the party, or 0 for cash purchase';return}
+    const date=$('#pd').value||today(),lines=[],lots=[];
     for(const r of document.querySelectorAll('#lines .lineBox')){
       const name=r.querySelector('.l-name').value.trim(),qty=num(r.querySelector('.l-qty').value),rate=num(r.querySelector('.l-rate').value),exp=r.querySelector('.l-exp').value;
       if(!name&&!qty&&!rate)continue;
       if(!name||qty<=0||rate<=0){$('#er').textContent='Each item needs a name, quantity and rate';return}
-      const lot={id:uid(),item:name,qty,orig:qty,rate,expiry:exp||'',party:partyId,date};lots.push(lot);lines.push({lot:lot.id,item:name,qty,rate});
+      const lot={id:uid(),item:name,qty,orig:qty,rate,expiry:exp||'',party:isStock?'':acc,date};lots.push(lot);lines.push({lot:lot.id,item:name,qty,rate});
     }
     if(!lines.length){$('#er').textContent='Add at least one item';return}
-    const amount=lines.reduce((a,l)=>a+l.qty*l.rate,0);const paid=Math.min(num($('#paid').value),amount);
-    db.lots.push(...lots);db.tx.push({id:uid(),type:'purchase',who:partyId,date,amount,paid,lines,note:$('#pnote').value.trim()});_sortTx();save();closeDlg();render();toast('Purchase saved, stock added');
+    const amount=lines.reduce((a,l)=>a+l.qty*l.rate,0);
+    const paid=isStock?0:acc==='cash'?amount:Math.min(num($('#paid').value),amount);
+    const snap=JSON.stringify(db);
+    if(e){const err=revertTx(e);if(err){db=JSON.parse(snap);$('#er').textContent=err;return}}
+    db.lots.push(...lots);
+    db.tx.push({id:e?e.id:uid(),seq:e?e.seq:db.seq++,type:kind,who:acc,date,amount,paid,lines,note:$('#pnote').value.trim(),no:e&&e.who===acc?e.no:nextNo(kind,acc)});
+    save();closeDlg();render();toast(isStock?'Stock added':'Invoice saved, stock added');
   };
 }
 
 // ---------- sale ----------
-function saleForm(custId){
-  if(!stockItems().length){toast('No stock to sell. Add a purchase first.');return}
-  openDlg(`<h2>Sale to ${esc(custName(custId))}</h2>
-  <div class="form" style="margin-top:12px"><label for="pd">Date<input id="pd" type="date" value="${today()}"></label>
-  <div id="lines" class="form"></div><button class="btn o" id="addLine">+ Add another item</button>
+function saleForm(who,edit){
+  const e=edit||null,sel=e?e.who:who||'';
+  if(!e&&!stockItems().length){toast('No stock to sell. Add stock first (Stock tab).');return}
+  const initial=e?e.lines.map(l=>({name:l.item,qty:l.qty,rate:l.price,extra:e.lines.map(x=>x.item)})):null;
+  if(initial)initial.extra=e.lines.map(x=>x.item);
+  openDlg(`<h2>${e?'Edit':'New'} sale invoice</h2><div class="form" style="margin-top:12px">
+  <label for="acc">Customer<select id="acc">${acctOptions('cust',sel,'Counter sale (no customer)')}</select></label><div class="muted" id="invno"></div>
+  <label for="pd">Date<input id="pd" type="date" value="${e?e.date:today()}"></label>
+  <div id="lines" class="form"></div><button class="btn o" id="addLine" type="button">+ Add another item</button>
   <div class="tot"><span>Total</span><span id="tt">Rs 0</span></div>
-  <label for="rec">Received now (Rs, leave empty if nothing received)<input id="rec" type="number" inputmode="decimal" min="0"></label>
-  <label for="pnote">Note (optional)<input id="pnote"></label><div class="err" id="er"></div>
-  <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save sale</button></div></div>`);
-  linesForm('sell');
+  <label for="rec" id="recBox">Received now (Rs, leave empty if nothing received)<input id="rec" type="number" inputmode="decimal" min="0" value="${e&&e.received&&e.who!=='cash'?e.received:''}"></label>
+  <label for="pnote">Note (optional)<input id="pnote" value="${e?esc(e.note||''):''}"></label><div class="err" id="er"></div>
+  <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
+  setupLines('sell',initial);
+  const upd=()=>{const a=$('#acc').value;$('#invno').textContent=a?'Invoice no. '+(e&&e.who===a?e.no:nextNo('sale',a)):'';$('#recBox').hidden=a==='cash'};$('#acc').onchange=upd;upd();
   $('#ok').onclick=()=>{
-    const date=$('#pd').value||today();const lines=[];const need={};
+    const acc=$('#acc').value;
+    if(!acc){$('#er').textContent='Select the customer, or 0 for counter sale';return}
+    const date=$('#pd').value||today(),lines=[];
     for(const r of document.querySelectorAll('#lines .lineBox')){
       const name=r.querySelector('.l-name').value,qty=num(r.querySelector('.l-qty').value),price=num(r.querySelector('.l-rate').value);
       if(!name&&!qty&&!price)continue;
       if(!name||qty<=0||price<=0){$('#er').textContent='Each item needs an item, quantity and price';return}
-      lines.push({item:name,qty,price});const k=name.toLowerCase();need[k]=(need[k]||0)+qty;
+      lines.push({item:name,qty,price});
     }
     if(!lines.length){$('#er').textContent='Add at least one item';return}
+    const snap=JSON.stringify(db);
+    if(e)revertTx(e);
+    const need={};lines.forEach(l=>{const k=l.item.toLowerCase();need[k]=(need[k]||0)+l.qty});
     const items=stockItems();
-    for(const k in need){const it=items.find(s=>s.name.toLowerCase()===k);if(!it||it.qty<need[k]){$('#er').textContent='Not enough stock of '+(it?it.name+' (only '+it.qty+' left)':k);return}}
-    // take from lots: earliest expiry first, then oldest purchase
-    lines.forEach(l=>{
+    for(const k in need){const it=items.find(s=>s.name.toLowerCase()===k);if(!it||it.qty<need[k]){db=JSON.parse(snap);$('#er').textContent='Not enough stock of '+(it?it.name+' (only '+it.qty+' left)':k);return}}
+    lines.forEach(l=>{ // earliest expiry first, then oldest
       let left=l.qty;l.from=[];
-      const lots=db.lots.filter(x=>x.item.trim().toLowerCase()===l.item.trim().toLowerCase()&&x.qty>0)
-        .sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999')||a.date.localeCompare(b.date));
+      const lots=db.lots.filter(x=>x.item.trim().toLowerCase()===l.item.trim().toLowerCase()&&x.qty>0).sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999')||a.date.localeCompare(b.date));
       for(const lot of lots){if(left<=0)break;const take=Math.min(lot.qty,left);lot.qty-=take;left-=take;l.from.push({lot:lot.id,qty:take,rate:lot.rate})}
     });
-    const amount=lines.reduce((a,l)=>a+l.qty*l.price,0);const received=Math.min(num($('#rec').value),amount);
-    db.tx.push({id:uid(),type:'sale',who:custId,date,amount,received,lines,note:$('#pnote').value.trim()});_sortTx();save();closeDlg();render();toast('Sale saved, stock reduced');
+    const amount=lines.reduce((a,l)=>a+l.qty*l.price,0);
+    const received=acc==='cash'?amount:Math.min(num($('#rec').value),amount);
+    db.tx.push({id:e?e.id:uid(),seq:e?e.seq:db.seq++,type:'sale',who:acc,date,amount,received,lines,note:$('#pnote').value.trim(),no:e&&e.who===acc?e.no:nextNo('sale',acc)});
+    save();closeDlg();render();toast('Invoice saved, stock reduced');
   };
 }
 
-// ---------- entry detail / delete ----------
+// ---------- entry detail / edit / delete ----------
 function txDetail(id){
   const t=db.tx.find(x=>x.id===id);if(!t)return;
-  const who=t.type==='purchase'||t.type==='pay'?partyName(t.who):custName(t.who);
-  const kind={purchase:'Purchase',pay:'Payment made',sale:'Sale',recv:'Payment received'}[t.type];
-  const rows=(t.lines||[]).map(l=>`<div class="li nolink"><span>${esc(l.item)}<small>${l.qty} × ${R(l.rate||l.price)}${t.type==='purchase'&&db.lots.find(x=>x.id===l.lot)?.expiry?' · exp '+fexp(db.lots.find(x=>x.id===l.lot).expiry):''}</small></span><b>${R(l.qty*(l.rate||l.price))}</b></div>`).join('');
-  openDlg(`<h2>${kind}</h2><div class="muted">${esc(who)} · ${fdate(t.date)}</div>${rows?`<div style="margin-top:8px">${rows}</div>`:''}
+  const rows=(t.lines||[]).map(l=>{const lot=t.type!=='sale'&&db.lots.find(x=>x.id===l.lot);return`<div class="li nolink"><span>${esc(l.item)}<small>${l.qty} × ${R(l.rate??l.price)}${lot&&lot.expiry?' · exp '+fexp(lot.expiry):''}</small></span><b>${R(l.qty*(l.rate??l.price))}</b></div>`}).join('');
+  openDlg(`<h2>${TXNAME[t.type]} #${t.no}</h2><div class="muted">${esc(whoLabel(t))} · ${fdate(t.date)}</div>${rows?`<div style="margin-top:8px">${rows}</div>`:''}
   <div class="tot" style="margin-top:8px"><span>Amount</span><span>${R(t.amount)}</span></div>
-  ${t.type==='purchase'?`<div class="tot"><span>Paid at purchase</span><span>${R(t.paid||0)}</span></div>`:''}${t.type==='sale'?`<div class="tot"><span>Received at sale</span><span>${R(t.received||0)}</span></div>`:''}
-  ${t.note&&t.note!=='EXAMPLE'?`<p class="muted">${esc(t.note)}</p>`:''}<div class="err" id="er"></div>
-  <div class="btns two"><button class="btn o" onclick="closeDlg()">Close</button><button class="btn danger" id="del">Delete entry</button></div>`);
-  $('#del').onclick=e=>{const b=e.target;if(!b.dataset.c){b.dataset.c=1;b.textContent='Tap again to delete';return}
-    if(t.type==='purchase'){
-      const bad=t.lines.some(l=>{const lot=db.lots.find(x=>x.id===l.lot);return lot&&lot.qty!==lot.orig});
-      if(bad){$('#er').textContent='Some of this stock is already sold. Delete those sales first.';return}
-      db.lots=db.lots.filter(l=>!t.lines.some(x=>x.lot===l.id));
-    }
-    if(t.type==='sale'){t.lines.forEach(l=>(l.from||[]).forEach(f=>{const lot=db.lots.find(x=>x.id===f.lot);if(lot)lot.qty+=f.qty}))}
-    db.tx=db.tx.filter(x=>x.id!==id);save();closeDlg();render();toast('Deleted')};
+  ${t.type==='purchase'&&t.who!=='cash'?`<div class="tot"><span>Paid at purchase</span><span>${R(t.paid||0)}</span></div>`:''}${t.type==='sale'&&t.who!=='cash'?`<div class="tot"><span>Received at sale</span><span>${R(t.received||0)}</span></div>`:''}
+  ${t.note?`<p class="muted">${esc(t.note)}</p>`:''}<div class="err" id="er"></div>
+  <div class="btns two"><button class="btn" id="edit">Edit</button><button class="btn danger" id="del">Delete</button></div><div class="btns" style="margin-top:0"><button class="btn o" onclick="closeDlg()">Close</button></div>`);
+  $('#edit').onclick=()=>{if(t.type==='sale')saleForm(null,t);else if(t.type==='purchase'||t.type==='stock')buyForm(t.type,null,t);else payForm(t.type,null,t)};
+  $('#del').onclick=ev=>{const b=ev.target;if(!b.dataset.c){b.dataset.c=1;b.textContent='Tap again to delete';return}
+    const snap=JSON.stringify(db);const err=revertTx(t);if(err){db=JSON.parse(snap);$('#er').textContent=err;return}
+    save();closeDlg();render();toast('Deleted')};
 }
 
 // ---------- stock ----------
 function rStock(){
-  const items=stockItems();const val=items.reduce((a,i)=>a+i.value,0);
-  chrome('Stock','Value at purchase rate: '+R(val),false,'stock');
-  const exp=expiring();
+  const items=stockItems(),exp=expiring();
+  chrome('Stock','Total stock amount: '+R(stockTotal()),false,'stock');
   $('#app').innerHTML=`
-  ${exp.length?`<h3>Expiring within 6 months</h3><div class="card" style="padding:2px 14px">${exp.map(l=>{const e=expiryInfo(l.expiry);return`<button class="li" onclick="editExpiry('${esc(l.item.replace(/'/g,"\\'"))}')"><span>${esc(l.item)}<small>Qty ${l.qty} · exp ${fexp(l.expiry)} · from ${esc(partyName(l.party))}</small></span><span class="pill ${e.k==='bad'?'bad':''}">${e.txt}</span></button>`}).join('')}</div>`:''}
-  <h3>All stock</h3><div class="card" style="padding:2px 14px">${items.length?items.map(i=>{const hasExp=i.lots.some(l=>l.expiry);return`<button class="li" onclick="editExpiry('${esc(i.name.replace(/'/g,"\\'"))}')"><span>${esc(i.name)}<small>Qty ${i.qty} · ${i.lots.length>1?i.lots.length+' lots':'rate '+R(i.lots[0].rate)}${hasExp?'':' · no expiry set'}</small></span><b>${R(i.value)}</b></button>`}).join(''):'<div class="empty">No stock. It appears when you add a purchase from a party.</div>'}</div>
-  <p class="muted" style="font-size:12.5px">Tap an item to set or change expiry. Items are sold earliest expiry first.</p>`;
+  <div class="btns"><button class="btn" onclick="buyForm('stock')">+ Add stock (no party)</button></div>
+  ${exp.length?`<h3>Expiring within 6 months</h3><div class="card" style="padding:2px 14px">${exp.map(l=>{const e=expiryInfo(l.expiry);return`<button class="li" onclick="editLots(decodeURIComponent('${enc(l.item)}'))"><span>${esc(l.item)}<small>Qty ${l.qty} · exp ${fexp(l.expiry)} · ${esc(lotSource(l))}</small></span><span class="pill ${e.k==='bad'?'bad':''}">${e.txt}</span></button>`}).join('')}</div>`:''}
+  <h3>Stk View</h3><div class="card" style="padding:2px 14px">${items.length?items.map(i=>`<button class="li" onclick="editLots(decodeURIComponent('${enc(i.name)}'))"><span>${esc(i.name)}<small>Qty ${i.qty} · ${i.lots.length>1?i.lots.length+' lots':'rate '+R(i.lots[0].rate)}${i.lots.some(l=>l.expiry)?'':' · no expiry set'}</small></span><b>${R(i.value)}</b></button>`).join(''):'<div class="empty">No stock yet. Tap "Add stock" for what you already have, or make a purchase invoice.</div>'}</div>
+  <p class="muted" style="font-size:12.5px">Tap an item to set expiry. To change a quantity or rate, edit the entry in the Invoice tab. Sales take the earliest expiry first.</p>`;
 }
-function editExpiry(name){
+function editLots(name){
   const lots=db.lots.filter(l=>l.item===name&&l.qty>0);if(!lots.length)return;
   openDlg(`<h2>${esc(name)}</h2><p class="muted" style="margin:2px 0 10px">Set expiry for each lot (optional). You get an alert 6 months before.</p><div class="form">
-  ${lots.map(l=>`<div class="lineBox"><div class="muted">Qty ${l.qty} · rate ${R(l.rate)} · from ${esc(partyName(l.party))}, ${fdate(l.date)}</div><label>Expiry<input class="e-exp" type="month" data-id="${l.id}" value="${l.expiry||''}"></label></div>`).join('')}
+  ${lots.map(l=>`<div class="lineBox"><div class="muted">Qty ${l.qty} · rate ${R(l.rate)} · ${esc(lotSource(l))}, ${fdate(l.date)}</div><label>Expiry<input class="e-exp" type="month" data-id="${l.id}" value="${l.expiry||''}"></label></div>`).join('')}
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
   $('#ok').onclick=()=>{document.querySelectorAll('.e-exp').forEach(i=>{const l=db.lots.find(x=>x.id===i.dataset.id);if(l)l.expiry=i.value||''});save();closeDlg();render();toast('Saved')};
 }
