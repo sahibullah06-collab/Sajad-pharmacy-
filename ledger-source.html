@@ -175,7 +175,7 @@ function expiryInfo(e){
 }
 function stockItems(){
   const map={};
-  db.lots.filter(l=>l.qty>0).forEach(l=>{const k=l.item.trim().toLowerCase();(map[k]=map[k]||{name:l.item,qty:0,value:0,lots:[]});const it=map[k];it.qty+=l.qty;it.value+=l.qty*l.rate;it.lots.push(l)});
+  db.lots.filter(l=>l.qty>0).forEach(l=>{const k=l.item.trim().toLowerCase();(map[k]=map[k]||{name:l.item,formula:'',qty:0,value:0,lots:[]});const it=map[k];if(!it.formula&&l.formula)it.formula=l.formula;it.qty+=l.qty;it.value+=l.qty*l.rate;it.lots.push(l)});
   return Object.values(map).sort((a,b)=>a.name.localeCompare(b.name));
 }
 const stockTotal=()=>db.lots.reduce((a,l)=>a+l.qty*l.rate,0);
@@ -371,7 +371,7 @@ function payForm(type,who,edit){
 function lineRow(kind,v){
   v=v||{};
   const nameBox=`<label>Item<input class="l-name" placeholder="Type to search, e.g. fur" autocomplete="off" value="${esc(v.name||'')}"></label><div class="pick" hidden></div>`;
-  if(kind==='buy')return`<div class="lineBox">${nameBox}
+  if(kind==='buy')return`<div class="lineBox">${nameBox}<label>Formula (optional)<input class="l-formula" placeholder="e.g. Paracetamol" autocomplete="off" value="${esc(v.formula||'')}"></label>
     <div class="cols3"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0" value="${v.qty||''}"></label><label>Rate (Rs)<input class="l-rate" type="number" inputmode="decimal" min="0" value="${v.rate||''}"></label><label>Expiry (optional)<input class="l-exp" type="month" value="${v.exp||''}"></label></div></div>`;
   return`<div class="lineBox">${nameBox}<div class="muted l-info" style="font-size:12.5px"></div>
     <div class="cols"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0" value="${v.qty||''}"></label><label>Price (Rs each)<input class="l-rate" type="number" inputmode="decimal" min="0" value="${v.rate||''}"></label></div></div>`;
@@ -379,10 +379,11 @@ function lineRow(kind,v){
 function lastSalePrice(name){const k=name.trim().toLowerCase();const ts=db.tx.filter(t=>t.type==='sale').sort((a,b)=>b.seq-a.seq);for(const t of ts){const l=t.lines.find(x=>x.item.trim().toLowerCase()===k);if(l)return l.price}return ''}
 function pickerSource(kind,extra){
   const stock={};stockItems().forEach(s=>stock[s.name.trim().toLowerCase()]=s.qty);
+  const formulaOf={};db.lots.forEach(l=>{if(l.formula)formulaOf[l.item.trim().toLowerCase()]=l.formula});
   const m={};
   if(kind==='sell'){Object.keys(stock).forEach(k=>m[k]={name:stockItems().find(s=>s.name.trim().toLowerCase()===k).name});(extra||[]).forEach(n=>{if(!m[n.trim().toLowerCase()])m[n.trim().toLowerCase()]={name:n}})}
   else db.lots.forEach(l=>{m[l.item.trim().toLowerCase()]={name:l.item,rate:l.rate}}); // newest lot wins
-  return Object.entries(m).map(([k,s])=>({...s,qty:stock[k]||0,price:kind==='sell'?lastSalePrice(s.name):''}));
+  return Object.entries(m).map(([k,s])=>({...s,qty:stock[k]||0,formula:formulaOf[k]||'',price:kind==='sell'?lastSalePrice(s.name):''}));
 }
 // type-ahead item search: type 1-2 letters, tap an item, rate fills in
 function wirePicker(kind,row,v){
@@ -391,21 +392,22 @@ function wirePicker(kind,row,v){
   const show=()=>{
     const toks=inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(!toks.length||selected===inp.value){box.hidden=true;return}
-    res=src.filter(s=>toks.every(t=>s.name.toLowerCase().includes(t))).sort((a,b)=>(+b.name.toLowerCase().startsWith(toks[0]))-(+a.name.toLowerCase().startsWith(toks[0]))||a.name.localeCompare(b.name)).slice(0,40);
-    box.innerHTML=res.length?res.map((s,i)=>`<button type="button" class="li" data-i="${i}"><span>${esc(s.name)}<small>${s.qty} in stock${kind==='buy'&&s.rate?' · last rate '+R(s.rate):''}${kind==='sell'&&s.price?' · last price '+R(s.price):''}</small></span></button>`).join(''):`<div class="muted" style="padding:9px 0;font-size:13px">${kind==='sell'?'Not in stock':'New item. It will be added when you save.'}</div>`;
+    res=src.filter(s=>toks.every(t=>(s.name+' '+s.formula).toLowerCase().includes(t))).sort((a,b)=>(+b.name.toLowerCase().startsWith(toks[0]))-(+a.name.toLowerCase().startsWith(toks[0]))||a.name.localeCompare(b.name)).slice(0,40);
+    box.innerHTML=res.length?res.map((s,i)=>`<button type="button" class="li" data-i="${i}"><span>${esc(s.name)}<small>${s.formula?esc(s.formula)+' · ':''}${s.qty} in stock${kind==='buy'&&s.rate?' · last rate '+R(s.rate):''}${kind==='sell'&&s.price?' · last price '+R(s.price):''}</small></span></button>`).join(''):`<div class="muted" style="padding:9px 0;font-size:13px">${kind==='sell'?'Not in stock':'New item. It will be added when you save.'}</div>`;
     box.hidden=false;
   };
   const choose=s=>{
     inp.value=s.name;selected=s.name;box.hidden=true;
     const def=kind==='buy'?s.rate:s.price;
     if(def&&!num(rate.value)){rate.value=def;rate.dispatchEvent(new Event('input'))}
-    if(info)info.textContent=s.qty+' in stock';
+    const fi=row.querySelector('.l-formula');if(fi&&!fi.value.trim()&&s.formula)fi.value=s.formula;
+    if(info)info.textContent=(s.formula?s.formula+' · ':'')+s.qty+' in stock';
     qty.focus();
   };
   box.addEventListener('click',e=>{const b=e.target.closest('button');if(b)choose(res[+b.dataset.i])});
   inp.addEventListener('input',()=>{selected=null;if(info)info.textContent='';show()});
   inp.addEventListener('focus',show);
-  if(info&&selected){const it=src.find(s=>s.name===selected);if(it)info.textContent=it.qty+' in stock'}
+  if(info&&selected){const it=src.find(s=>s.name===selected);if(it)info.textContent=(it.formula?it.formula+' · ':'')+it.qty+' in stock'}
 }
 function setupLines(kind,initial){
   const box=$('#lines');
@@ -424,7 +426,7 @@ function revertTx(t){
 }
 function buyForm(kind,who,edit){
   const isStock=kind==='stock',e=edit||null,sel=e?e.who:who||'';
-  const initial=e?e.lines.map(l=>{const lot=db.lots.find(x=>x.id===l.lot)||{};return{name:l.item,qty:l.qty,rate:l.rate,exp:lot.expiry||''}}):null;
+  const initial=e?e.lines.map(l=>{const lot=db.lots.find(x=>x.id===l.lot)||{};return{name:l.item,qty:l.qty,rate:l.rate,exp:lot.expiry||'',formula:lot.formula||''}}):null;
   openDlg(`<h2>${e?'Edit':'New'} ${isStock?'stock entry':'purchase invoice'}</h2>
   <div class="form" style="margin-top:12px">
   ${isStock?'<div class="muted" style="font-size:13px">Add stock you already have, without a party.</div>':`${accField('Party')}<div class="muted" id="invno"></div>`}
@@ -442,10 +444,10 @@ function buyForm(kind,who,edit){
     if(!acc){$('#er').textContent='Select the party, or 0 for cash purchase';return}
     const date=$('#pd').value||today(),lines=[],lots=[];
     for(const r of document.querySelectorAll('#lines .lineBox')){
-      const name=r.querySelector('.l-name').value.trim(),qty=num(r.querySelector('.l-qty').value),rate=num(r.querySelector('.l-rate').value),exp=r.querySelector('.l-exp').value;
+      const name=r.querySelector('.l-name').value.trim(),qty=num(r.querySelector('.l-qty').value),rate=num(r.querySelector('.l-rate').value),exp=r.querySelector('.l-exp').value,formula=r.querySelector('.l-formula').value.trim();
       if(!name&&!qty&&!rate)continue;
       if(!name||qty<=0||rate<=0){$('#er').textContent='Each item needs a name, quantity and rate';return}
-      const lot={id:uid(),item:name,qty,orig:qty,rate,expiry:exp||'',party:isStock?'':acc,date};lots.push(lot);lines.push({lot:lot.id,item:name,qty,rate});
+      const lot={id:uid(),item:name,formula,qty,orig:qty,rate,expiry:exp||'',party:isStock?'':acc,date};lots.push(lot);lines.push({lot:lot.id,item:name,qty,rate});
     }
     if(!lines.length){$('#er').textContent='Add at least one item';return}
     const amount=lines.reduce((a,l)=>a+l.qty*l.rate,0);
@@ -506,7 +508,7 @@ function saleForm(who,edit){
 // ---------- entry detail / edit / delete ----------
 function txDetail(id){
   const t=db.tx.find(x=>x.id===id);if(!t)return;
-  const rows=(t.lines||[]).map(l=>{const lot=t.type!=='sale'&&db.lots.find(x=>x.id===l.lot);return`<div class="li nolink"><span>${esc(l.item)}<small>${l.qty} × ${R(l.rate??l.price)}${lot&&lot.expiry?' · exp '+fexp(lot.expiry):''}</small></span><b>${R(l.qty*(l.rate??l.price))}</b></div>`}).join('');
+  const rows=(t.lines||[]).map(l=>{const lot=t.type!=='sale'&&db.lots.find(x=>x.id===l.lot);return`<div class="li nolink"><span>${esc(l.item)}<small>${lot&&lot.formula?esc(lot.formula)+' · ':''}${l.qty} × ${R(l.rate??l.price)}${lot&&lot.expiry?' · exp '+fexp(lot.expiry):''}</small></span><b>${R(l.qty*(l.rate??l.price))}</b></div>`}).join('');
   openDlg(`<h2>${TXNAME[t.type]} #${t.no}</h2><div class="muted">${esc(whoLabel(t))} · ${fdate(t.date)}</div>${rows?`<div style="margin-top:8px">${rows}</div>`:''}
   <div class="tot" style="margin-top:8px"><span>Amount</span><span>${R(t.amount)}</span></div>
   ${t.type==='purchase'&&t.who!=='cash'?`<div class="tot"><span>Paid at purchase</span><span>${R(t.paid||0)}</span></div>`:''}${t.type==='sale'&&t.who!=='cash'?`<div class="tot"><span>Received at sale</span><span>${R(t.received||0)}</span></div>`:''}
@@ -525,21 +527,23 @@ function rStock(){
   $('#app').innerHTML=`
   <div class="btns"><button class="btn" onclick="buyForm('stock')">+ Add stock (no party)</button></div>
   ${exp.length?`<h3>Expiring within 6 months</h3><div class="card" style="padding:2px 14px">${exp.map(l=>{const e=expiryInfo(l.expiry);return`<button class="li" onclick="editLots(decodeURIComponent('${enc(l.item)}'))"><span>${esc(l.item)}<small>Qty ${l.qty} · exp ${fexp(l.expiry)} · ${esc(lotSource(l))}</small></span><span class="pill ${e.k==='bad'?'bad':''}">${e.txt}</span></button>`}).join('')}</div>`:''}
-  <h3>Stk View</h3><input id="ss" placeholder="Search stock: type 1-2 letters" autocomplete="off" value="${esc(stockTerm)}" aria-label="Search stock"><div class="card" id="slist" style="padding:2px 14px;margin-top:10px"></div>
+  <h3>Stk View</h3><input id="ss" placeholder="Search stock by name or formula" autocomplete="off" value="${esc(stockTerm)}" aria-label="Search stock"><div class="card" id="slist" style="padding:2px 14px;margin-top:10px"></div>
   <p class="muted" style="font-size:12.5px">Tap an item to set expiry. To change a quantity or rate, edit the entry in the Invoice tab. Sales take the earliest expiry first.</p>`;
   const draw=()=>{
     const toks=stockTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const rows=items.filter(i=>toks.every(t=>i.name.toLowerCase().includes(t)));
-    $('#slist').innerHTML=rows.length?rows.slice(0,150).map(i=>`<button class="li" onclick="editLots(decodeURIComponent('${enc(i.name)}'))"><span>${esc(i.name)}<small>Qty ${i.qty} · ${i.lots.length>1?i.lots.length+' lots':'rate '+R(i.lots[0].rate)}${i.lots.some(l=>l.expiry)?'':' · no expiry set'}</small></span><b>${R(i.value)}</b></button>`).join('')+(rows.length>150?'<div class="empty">Showing 150 of '+rows.length+'. Search to narrow.</div>':''):`<div class="empty">${items.length?'No item matches.':'No stock yet. Tap "Add stock" for what you already have, or make a purchase invoice.'}</div>`;
+    const rows=items.filter(i=>toks.every(t=>(i.name+' '+i.formula).toLowerCase().includes(t)));
+    $('#slist').innerHTML=rows.length?rows.slice(0,150).map(i=>`<button class="li" onclick="editLots(decodeURIComponent('${enc(i.name)}'))"><span>${esc(i.name)}<small>${i.formula?esc(i.formula)+' · ':''}Qty ${i.qty} · ${i.lots.length>1?i.lots.length+' lots':'rate '+R(i.lots[0].rate)}${i.lots.some(l=>l.expiry)?'':' · no expiry set'}</small></span><b>${R(i.value)}</b></button>`).join('')+(rows.length>150?'<div class="empty">Showing 150 of '+rows.length+'. Search to narrow.</div>':''):`<div class="empty">${items.length?'No item matches.':'No stock yet. Tap "Add stock" for what you already have, or make a purchase invoice.'}</div>`;
   };
   $('#ss').oninput=e=>{stockTerm=e.target.value;draw()};draw();
 }
 function editLots(name){
   const lots=db.lots.filter(l=>l.item===name&&l.qty>0);if(!lots.length)return;
-  openDlg(`<h2>${esc(name)}</h2><p class="muted" style="margin:2px 0 10px">Set expiry for each lot (optional). You get an alert 6 months before.</p><div class="form">
+  const curF=(lots.find(l=>l.formula)||{}).formula||'';
+  openDlg(`<h2>${esc(name)}</h2><p class="muted" style="margin:2px 0 10px">Formula and expiry are optional. You get an expiry alert 6 months before.</p><div class="form">
+  <label for="e-formula">Formula<input id="e-formula" placeholder="e.g. Paracetamol" autocomplete="off" value="${esc(curF)}"></label>
   ${lots.map(l=>`<div class="lineBox"><div class="muted">Qty ${l.qty} · rate ${R(l.rate)} · ${esc(lotSource(l))}, ${fdate(l.date)}</div><label>Expiry<input class="e-exp" type="month" data-id="${l.id}" value="${l.expiry||''}"></label></div>`).join('')}
   <div class="btns two"><button class="btn o" onclick="closeDlg()">Cancel</button><button class="btn" id="ok">Save</button></div></div>`);
-  $('#ok').onclick=()=>{document.querySelectorAll('.e-exp').forEach(i=>{const l=db.lots.find(x=>x.id===i.dataset.id);if(l)l.expiry=i.value||''});save();closeDlg();render();toast('Saved')};
+  $('#ok').onclick=()=>{const f=$('#e-formula').value.trim();db.lots.forEach(l=>{if(l.item===name)l.formula=f});document.querySelectorAll('.e-exp').forEach(i=>{const l=db.lots.find(x=>x.id===i.dataset.id);if(l)l.expiry=i.value||''});save();closeDlg();render();toast('Saved')};
 }
 
 // ---------- shared database: login and live sync ----------
