@@ -63,6 +63,9 @@ label{display:grid;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500;m
 .lineBox{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--surface)}
 .pick{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:0 10px}
 .pick .li{padding:9px 0}
+.chips{display:flex;gap:6px}
+.chip{padding:6px 14px;border-radius:99px;border:1px solid var(--accent);color:var(--accent);background:var(--surface);font:700 13px var(--font-body);cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-fg)}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--accent);border-radius:10px;overflow:hidden;margin-bottom:12px}
 .seg button{background:var(--surface);color:var(--accent);border:0;padding:10px;font:700 14px var(--font-body);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
@@ -238,7 +241,7 @@ function rHome(){
 }
 
 // ---------- accounts (Cust) ----------
-let acctTab='cust',stockTerm='',acctTerm='';
+let acctTab='cust',stockTerm='',acctTerm='',stockMode='brand',formulaTerm='';
 function acctRows(k,term,from){
   const rows=sortedList(k).filter(p=>matchAcct(p,term));
   return rows.length?rows.map(p=>{const s=stats(k,p.id);
@@ -373,7 +376,9 @@ function payForm(type,who,edit){
 // ---------- stock in: purchase / added stock ----------
 function lineRow(kind,v){
   v=v||{};
-  const nameBox=`<label>Item<input class="l-name" placeholder="Type to search, e.g. fur" autocomplete="off" value="${esc(v.name||'')}"></label><div class="pick" hidden></div>`;
+  const nameBox=`<div class="chips pmode"><button type="button" class="chip on" data-m="brand">Brand</button><button type="button" class="chip" data-m="formula">Formula</button></div>
+  <label class="l-namelbl">Item<input class="l-name" placeholder="Type to search, e.g. fur" autocomplete="off" value="${esc(v.name||'')}"></label>
+  <label class="l-fqlbl" hidden>Item formula<input class="l-fq" placeholder="Type formula, e.g. parac" autocomplete="off"></label><div class="pick" hidden></div>`;
   if(kind==='buy')return`<div class="lineBox">${nameBox}<label>Formula (optional)<input class="l-formula" placeholder="e.g. Paracetamol" autocomplete="off" value="${esc(v.formula||'')}"></label>
     <div class="cols3"><label>Qty<input class="l-qty" type="number" inputmode="decimal" min="0" value="${v.qty||''}"></label><label>Rate (Rs)<input class="l-rate" type="number" inputmode="decimal" min="0" value="${v.rate||''}"></label><label>Expiry (optional)<input class="l-exp" type="month" value="${v.exp||''}"></label></div></div>`;
   return`<div class="lineBox">${nameBox}<div class="muted l-info" style="font-size:12.5px"></div>
@@ -391,8 +396,18 @@ function pickerSource(kind,extra){
 // type-ahead item search: type 1-2 letters, tap an item, rate fills in
 function wirePicker(kind,row,v){
   const inp=row.querySelector('.l-name'),box=row.querySelector('.pick'),rate=row.querySelector('.l-rate'),qty=row.querySelector('.l-qty'),info=row.querySelector('.l-info');
-  const src=pickerSource(kind,v&&v.extra);let selected=(v&&v.name)||null,res=[];
+  const src=pickerSource(kind,v&&v.extra);let selected=(v&&v.name)||null,res=[],mode='brand';
+  const fq=row.querySelector('.l-fq'),chips=row.querySelectorAll('.pmode .chip'),nameLbl=row.querySelector('.l-namelbl'),fqLbl=row.querySelector('.l-fqlbl');
+  const setMode=m=>{mode=m;chips.forEach(c=>c.classList.toggle('on',c.dataset.m===m));nameLbl.hidden=m==='formula';fqLbl.hidden=m==='brand';box.hidden=true;if(m==='formula'){fq.value='';fq.focus()}else inp.focus()};
+  chips.forEach(c=>c.addEventListener('click',()=>setMode(c.dataset.m)));
   const show=()=>{
+    if(mode==='formula'){ // every item whose formula matches
+      const ft=fq.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if(!ft.length){box.hidden=true;return}
+      res=src.filter(s=>s.formula&&ft.every(t=>s.formula.toLowerCase().includes(t))).sort((a,b)=>a.formula.localeCompare(b.formula)||a.name.localeCompare(b.name)).slice(0,80);
+      box.innerHTML=res.length?res.map((s,i)=>`<button type="button" class="li" data-i="${i}"><span>${esc(s.name)}<small>${esc(s.formula)} · ${s.qty} in stock${kind==='buy'&&s.rate?' · last rate '+R(s.rate):''}${kind==='sell'&&s.price?' · last price '+R(s.price):''}</small></span></button>`).join(''):'<div class="muted" style="padding:9px 0;font-size:13px">No item with this formula. Add the formula to your items in the Stock tab.</div>';
+      box.hidden=false;return;
+    }
     const toks=inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(!toks.length||selected===inp.value){box.hidden=true;return}
     res=src.filter(s=>toks.every(t=>(s.name+' '+s.formula).toLowerCase().includes(t))).sort((a,b)=>(+b.name.toLowerCase().startsWith(toks[0]))-(+a.name.toLowerCase().startsWith(toks[0]))||a.name.localeCompare(b.name)).slice(0,40);
@@ -400,6 +415,7 @@ function wirePicker(kind,row,v){
     box.hidden=false;
   };
   const choose=s=>{
+    if(mode==='formula')setMode('brand');
     inp.value=s.name;selected=s.name;box.hidden=true;
     const def=kind==='buy'?s.rate:s.price;
     if(def&&!num(rate.value)){rate.value=def;rate.dispatchEvent(new Event('input'))}
@@ -410,6 +426,7 @@ function wirePicker(kind,row,v){
   box.addEventListener('click',e=>{const b=e.target.closest('button');if(b)choose(res[+b.dataset.i])});
   inp.addEventListener('input',()=>{selected=null;if(info)info.textContent='';show()});
   inp.addEventListener('focus',show);
+  fq.addEventListener('input',show);fq.addEventListener('focus',show);
   if(info&&selected){const it=src.find(s=>s.name===selected);if(it)info.textContent=(it.formula?it.formula+' · ':'')+it.qty+' in stock'}
 }
 function setupLines(kind,initial){
@@ -530,14 +547,23 @@ function rStock(){
   $('#app').innerHTML=`
   <div class="btns"><button class="btn" onclick="buyForm('stock')">+ Add stock (no party)</button></div>
   ${exp.length?`<h3>Expiring within 6 months</h3><div class="card" style="padding:2px 14px">${exp.map(l=>{const e=expiryInfo(l.expiry);return`<button class="li" onclick="editLots(decodeURIComponent('${enc(l.item)}'))"><span>${esc(l.item)}<small>Qty ${l.qty} · exp ${fexp(l.expiry)} · ${esc(lotSource(l))}</small></span><span class="pill ${e.k==='bad'?'bad':''}">${e.txt}</span></button>`}).join('')}</div>`:''}
-  <h3>Stk View</h3><input id="ss" placeholder="Search stock by name or formula" autocomplete="off" value="${esc(stockTerm)}" aria-label="Search stock"><div class="card" id="slist" style="padding:2px 14px;margin-top:10px"></div>
-  <p class="muted" style="font-size:12.5px">Tap an item to set expiry. To change a quantity or rate, edit the entry in the Invoice tab. Sales take the earliest expiry first.</p>`;
+  <h3>Stk View</h3><div class="chips" style="margin-bottom:8px"><button class="chip ${stockMode==='brand'?'on':''}" onclick="stockMode='brand';rStock()">By brand</button><button class="chip ${stockMode==='formula'?'on':''}" onclick="stockMode='formula';rStock()">By formula</button></div>
+  <input id="ss" placeholder="${stockMode==='brand'?'Search stock by name or formula':'Search by formula, e.g. parac'}" autocomplete="off" value="${esc(stockMode==='brand'?stockTerm:formulaTerm)}" aria-label="Search stock"><div id="slist" style="margin-top:10px"></div>
+  <p class="muted" style="font-size:12.5px">Tap an item to set expiry or formula. To change a quantity or rate, edit the entry in the Invoice tab. Sales take the earliest expiry first.</p>`;
+  const row=i=>`<button class="li" onclick="editLots(decodeURIComponent('${enc(i.name)}'))"><span>${esc(i.name)}<small>${i.formula?esc(i.formula)+' · ':''}Qty ${i.qty} · ${i.lots.length>1?i.lots.length+' lots':'rate '+R(i.lots[0].rate)}${i.lots.some(l=>l.expiry)?'':' · no expiry set'}</small></span><b>${R(i.value)}</b></button>`;
   const draw=()=>{
-    const toks=stockTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const rows=items.filter(i=>toks.every(t=>(i.name+' '+i.formula).toLowerCase().includes(t)));
-    $('#slist').innerHTML=rows.length?rows.slice(0,150).map(i=>`<button class="li" onclick="editLots(decodeURIComponent('${enc(i.name)}'))"><span>${esc(i.name)}<small>${i.formula?esc(i.formula)+' · ':''}Qty ${i.qty} · ${i.lots.length>1?i.lots.length+' lots':'rate '+R(i.lots[0].rate)}${i.lots.some(l=>l.expiry)?'':' · no expiry set'}</small></span><b>${R(i.value)}</b></button>`).join('')+(rows.length>150?'<div class="empty">Showing 150 of '+rows.length+'. Search to narrow.</div>':''):`<div class="empty">${items.length?'No item matches.':'No stock yet. Tap "Add stock" for what you already have, or make a purchase invoice.'}</div>`;
+    if(stockMode==='formula'){
+      const toks=formulaTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const groups={};items.forEach(i=>{if(!i.formula)return;const k=i.formula.trim().toLowerCase();(groups[k]=groups[k]||{formula:i.formula,items:[]}).items.push(i)});
+      const gs=Object.values(groups).filter(g=>toks.every(t=>g.formula.toLowerCase().includes(t))).sort((a,b)=>a.formula.localeCompare(b.formula));
+      $('#slist').innerHTML=gs.length?gs.slice(0,40).map(g=>`<div class="sum"><div style="font-weight:700"><span>${esc(g.formula)}</span><span>${g.items.length} brand${g.items.length>1?'s':''} · ${g.items.reduce((a,x)=>a+x.qty,0)} in stock</span></div></div><div class="card" style="padding:2px 14px">${g.items.map(row).join('')}</div>`).join(''):`<div class="card empty">${Object.keys(groups).length?'No formula matches.':'No formula set yet. Tap an item below in "By brand" and add its formula.'}</div>`;
+    }else{
+      const toks=stockTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const rows=items.filter(i=>toks.every(t=>(i.name+' '+i.formula).toLowerCase().includes(t)));
+      $('#slist').innerHTML=`<div class="card" style="padding:2px 14px">${rows.length?rows.slice(0,150).map(row).join('')+(rows.length>150?'<div class="empty">Showing 150 of '+rows.length+'. Search to narrow.</div>':''):`<div class="empty">${items.length?'No item matches.':'No stock yet. Tap "Add stock" for what you already have, or make a purchase invoice.'}</div>`}</div>`;
+    }
   };
-  $('#ss').oninput=e=>{stockTerm=e.target.value;draw()};draw();
+  $('#ss').oninput=e=>{if(stockMode==='brand')stockTerm=e.target.value;else formulaTerm=e.target.value;draw()};draw();
 }
 function editLots(name){
   const lots=db.lots.filter(l=>l.item===name&&l.qty>0);if(!lots.length)return;
