@@ -237,7 +237,13 @@ function rHome(){
   $('#bGo').onclick=e=>{try{const d=JSON.parse($('#bTxt').value);if(!d.parties||!d.tx||!d.lots)throw 0;
     if(CLOUD&&!e.target.dataset.c){e.target.dataset.c=1;e.target.textContent='This replaces the data for EVERYONE. Tap again to confirm';return}
     db={parties:d.parties,customers:d.customers||[],lots:d.lots,tx:d.tx};save();render();toast('Backup restored')}catch(x){toast('That text is not a valid backup')}};
-  const w=$('#wipe');if(w)w.onclick=e=>{const b=e.target;if(b.dataset.c){db=EMPTY();save();render();toast('All data deleted')}else{b.dataset.c=1;b.textContent='Tap again to delete everything'}};
+  const w=$('#wipe');if(w)w.onclick=()=>{
+    openDlg(`<h2>Are you sure you want to delete all data?</h2><p class="muted">All parties, customers, stock and invoices will be erased from this phone.</p><div class="btns two"><button class="btn o" onclick="closeDlg()">No, keep my data</button><button class="btn danger" id="y1">Yes, delete</button></div>`);
+    $('#y1').onclick=()=>{
+      openDlg(`<h2>Final confirmation</h2><p class="muted">This cannot be undone. Everything will be lost. Do you really want to delete ALL data?</p><div class="btns two"><button class="btn o" onclick="closeDlg()">No, keep my data</button><button class="btn danger" id="y2">Yes, delete everything</button></div>`);
+      $('#y2').onclick=()=>{db=EMPTY();save();closeDlg();render();toast('All data deleted')};
+    };
+  };
   const lo=$('#logout');if(lo)lo.onclick=()=>fbAuth.signOut();
 }
 
